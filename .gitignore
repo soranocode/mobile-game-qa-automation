@@ -1,0 +1,46 @@
+# Python and local dependencies
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local evidence, scratch files, device/account state, and builds
+work/
+runs/
+artifacts/
+captures/
+screenshots/
+logs/
+recordings/
+builds/
+dist/
+device-config.local.*
+account-config.local.*
+*.apk
+*.aab
+*.apks
+*.obb
+*.ipa
+*.jks
+*.keystore
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+secrets/
+
+# Local editor and OS state
+.vscode/
+.idea/
+.cursor/worktrees.json
+.DS_Store
+Thumbs.db
+Desktop.ini
