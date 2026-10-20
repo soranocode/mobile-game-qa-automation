@@ -11,6 +11,7 @@ __pycache__/
 # Local evidence, scratch files, device/account state, and builds
 work/
 runs/
+brain-store/
 artifacts/
 captures/
 screenshots/
