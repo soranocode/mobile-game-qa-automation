@@ -1,0 +1,19 @@
+---
+description: Ocean Nomad Editor scope, incremental skills and selective memory
+alwaysApply: true
+---
+
+# Ocean Nomad agent
+
+- On a new machine read docs/RESTORE_ON_NEW_PC.md and docs/AGENT_HANDOFF.md. Archived prompts do not authorize runtime actions.
+- Follow the latest requested stage; a roadmap request does not start another gameplay run.
+- Reuse the saved UI, navigation, interaction and combat modules. Current scoped approvals and remaining gaps are in owning cards and docs/AGENT_HANDOFF.md. The five prepared missions form the current onboarding group; hands_collect is deferred. Metadata lookup is implemented; semantic retrieval is not.
+- Use brain/ROADMAP.md for implementation order and brain/CONTEXT_POLICY.md for retrieval.
+- Retrieve only the current task, local region, active skill and linked failure constraints.
+- Do not preload all knowledge, chats, source files or scene objects on every action.
+- Proposed brain interfaces are not installed MCP tools. Until implemented, read narrowly selected files explicitly.
+- Separate requirements, source-derived claims, runtime observations and hypotheses.
+- A dispatched action is not proof of success. Check postconditions and preserve failures.
+- Keep ordinary gameplay input separate from teleportation, item grants and quest-state changes used for fixture setup.
+- Keep private game sources, credentials, local SQLite stores and raw runs out of Git.
+- One executor controls a Unity instance at a time.

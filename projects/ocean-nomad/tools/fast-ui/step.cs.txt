@@ -1,0 +1,148 @@
+const string role = "__ROLE__";
+const string prefix = "QaAgent.FastUi.";
+if (UnityEditor.SessionState.GetBool(prefix + "warmup", false))
+    return new { status = "compiled_only", role = role, input_sent = false };
+__ERROR_WATCH_SETUP__
+var priority = System.AppDomain.CurrentDomain.GetData("QaAgent.SharkDefense.v1") as System.Collections.Generic.Dictionary<string,object>;
+if(role!="observe"&&priority!=null&&(bool)priority["busy"])return new{status="preempted_shark",role=role};
+if (role != "observe" && errorWatchBlocked())
+    return new { status = "blocked_new_error", role = role, error_watch = errorWatchSnapshot() };
+if (role != "observe") {
+    var watch = System.AppDomain.CurrentDomain.GetData("QaAgent.ErrorWatch.v1") as System.Collections.Generic.Dictionary<string,object>;
+    if (watch != null) lock (watch["gate"]) watch["phase"] = role;
+}
+if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused)
+    return new { status = "not_sent", reason = "Play is not running" };
+System.Func<UnityEngine.GameObject, string> path = go => {
+    var names = new System.Collections.Generic.List<string>();
+    for (var t = go.transform; t != null; t = t.parent) names.Insert(0, t.name);
+    return string.Join("/", names.ToArray());
+};
+string popupText = "";
+foreach (var w in UnityEngine.Resources.FindObjectsOfTypeAll<Acme.Gui.Abstractions.AbstractWindowPrefab>()) {
+    if (w == null || !w.isActiveAndEnabled || !w.gameObject.scene.IsValid() || !w.gameObject.scene.isLoaded || w.name != "UIPopupDefault") continue;
+    foreach (var t in w.GetComponentsInChildren<UnityEngine.UI.Text>(false))
+        if (!string.IsNullOrEmpty(t.text)) popupText += t.text + "\n";
+}
+bool newGameConfirmation = popupText.Contains("прогресс") && popupText.Contains("начать");
+bool exitConfirmation = popupText.Contains("ГЛАВНОЕ МЕНЮ") && popupText.Contains("Выйти?");
+string premiumTitle = null;
+string premiumPage = null;
+var premiumRoot = UnityEngine.GameObject.Find("CanvasOnboarding/PremiumNewVariants_16x9_Android");
+if (premiumRoot != null) {
+    // The same window class also hosts introduction pages. Hidden price labels are not a page identifier.
+    premiumPage = "loading";
+    foreach (var t in premiumRoot.GetComponentsInChildren<UnityEngine.UI.Text>(false)) {
+        var title = System.Text.RegularExpressions.Regex.Replace(t.text ?? "", "<[^>]*>", "");
+        title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
+        if (title == "ПОСТРОЙ ПЛОТ МЕЧТЫ!") { premiumTitle = title; premiumPage = "intro_build"; break; }
+        if (title == "ВЫЖИВАЙ НА ПЛОТУ!") { premiumTitle = title; premiumPage = "intro_survive"; break; }
+        if (title == "НАСЛАЖДАЙСЯ ИГРОЙ И ПОЛУЧАЙ БОНУСЫ") { premiumTitle = title; premiumPage = "offer"; break; }
+    }
+    if (premiumTitle == null && premiumRoot.GetComponentsInChildren<UnityEngine.UI.Text>(false).Any(t => !string.IsNullOrEmpty(t.text)))
+        premiumPage = "unknown";
+}
+System.Func<UnityEngine.MonoBehaviour, string> identify = b => {
+    var p = path(b.gameObject);
+    if (b.name == "Dashboard" && p.Contains("UIHudTopButtonsPanel")) return "open_menu";
+    if ((b.name == "UIDashboardButtonSettings" && p.Contains("UIDashboard/")) ||
+        (b.name == "Settings" && p.Contains("UIHudTopButtonsPanel"))) return "open_settings";
+    if (b.name == "NewGame" && p.Contains("UIPause/")) return "start_new_game";
+    if (b.name == "MainMenu" && p.Contains("UIPause/")) return "exit_to_main_menu";
+    if (b.name == "UIButtonGreenDark(Clone)" && p.Contains("UIPopupDefault/")) {
+        if (newGameConfirmation) return "confirm_new_game";
+        if (exitConfirmation) return "confirm_exit";
+    }
+    if (b.name == "CloseButton" && p.Contains("PremiumNewVariants_16x9_Android/Panel/")) return "close_premium";
+    if (b.name == "PremiumButton" && p.EndsWith("PremiumNewVariants_16x9_Android/Panel/Right/Bottom/PremiumButton") &&
+        b.GetComponentsInChildren<UnityEngine.UI.Text>(false).Any(t => (t.text ?? "").Trim() == "ПРОДОЛЖИТЬ")) {
+        if (premiumPage == "intro_build") return "skip_intro_build";
+        if (premiumPage == "intro_survive") return "skip_intro_survive";
+    }
+    if (b.name == "UIButtonClose" && p.Contains("UIPopupDiscord/Main/UIPopupTitle/Content/")) return "close_discord";
+    if (b.name == "SmallButton" && p.EndsWith("MainScreen2/Survival/SmallButton")) return "main_menu_continue";
+    return null;
+};
+var buttons = new System.Collections.Generic.List<UnityEngine.MonoBehaviour>();
+foreach (var b in UnityEngine.Resources.FindObjectsOfTypeAll<UnityEngine.MonoBehaviour>()) {
+    if (!(b is UnityEngine.EventSystems.IPointerClickHandler) || b == null || !b.isActiveAndEnabled ||
+        !b.gameObject.scene.IsValid() || !b.gameObject.scene.isLoaded) continue;
+    if (identify(b) != null) buttons.Add(b);
+}
+if (role == "observe") {
+    var controls = new System.Collections.Generic.List<object>();
+    foreach (var b in buttons) {
+        var simple = b as Survival.Widgets.UI.Button.UISimpleButton;
+        controls.Add(new { role = identify(b), name = b.name, blocked = simple != null && simple.BlockButton });
+    }
+    var windows = new System.Collections.Generic.List<string>();
+    foreach (var w in UnityEngine.Resources.FindObjectsOfTypeAll<Acme.Gui.Abstractions.AbstractWindowPrefab>()) {
+        if (w == null || !w.isActiveAndEnabled || !w.gameObject.scene.IsValid() || !w.gameObject.scene.isLoaded) continue;
+        windows.Add(w.GetType().FullName);
+    }
+    var scenes = new System.Collections.Generic.List<string>();
+    for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++) {
+        var s = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+        if (s.isLoaded) scenes.Add(s.name);
+    }
+    return new { status = UnityEditor.SessionState.GetString(prefix + "status", "idle"),
+        selected_role = UnityEditor.SessionState.GetString(prefix + "role", ""),
+        frame = UnityEngine.Time.frameCount, scenes = scenes, controls = controls, windows = windows,
+        error_watch = errorWatchSnapshot(),
+        premium_page = premiumPage, premium_title = premiumTitle,
+        confirmation_is_new_game = newGameConfirmation, confirmation_is_exit = exitConfirmation,
+        confirmation_text = popupText.Length > 500 ? popupText.Substring(0,500) : popupText };
+}
+var targets = buttons.Where(b => identify(b) == role).ToArray();
+if (targets.Length != 1) return new { status = "not_sent", reason = "Expected one current UI target", matches = targets.Length };
+var target = targets[0];
+var es = UnityEngine.EventSystems.EventSystem.current;
+if (es == null) return new { status = "not_sent", reason = "No EventSystem" };
+int sequence = UnityEditor.SessionState.GetInt(prefix + "sequence", 0) + 1;
+UnityEditor.SessionState.SetInt(prefix + "sequence", sequence);
+UnityEditor.SessionState.SetString(prefix + "role", role);
+UnityEditor.SessionState.SetString(prefix + "status", "pending");
+var expires = System.DateTime.UtcNow.AddSeconds(2);
+System.Action send = () => {
+    if (sequence != UnityEditor.SessionState.GetInt(prefix + "sequence", 0)) return;
+    if (errorWatchBlocked()) { UnityEditor.SessionState.SetString(prefix + "status", "blocked_new_error"); return; }
+    if (System.DateTime.UtcNow > expires) { UnityEditor.SessionState.SetString(prefix + "status", "expired_without_input"); return; }
+    if (target == null || !target.isActiveAndEnabled || !UnityEditor.EditorApplication.isPlaying) {
+        UnityEditor.SessionState.SetString(prefix + "status", "not_sent_target_changed"); return;
+    }
+    if (role == "skip_intro_build" || role == "skip_intro_survive") {
+        var currentRoot = UnityEngine.GameObject.Find("CanvasOnboarding/PremiumNewVariants_16x9_Android");
+        var expectedTitle = role == "skip_intro_build" ? "ПОСТРОЙ ПЛОТ МЕЧТЫ!" : "ВЫЖИВАЙ НА ПЛОТУ!";
+        bool samePage = currentRoot != null && currentRoot.GetComponentsInChildren<UnityEngine.UI.Text>(false).Any(t =>
+            System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(t.text ?? "", "<[^>]*>", ""), @"\s+", " ").Trim() == expectedTitle);
+        if (!samePage || !target.GetComponentsInChildren<UnityEngine.UI.Text>(false).Any(t => (t.text ?? "").Trim() == "ПРОДОЛЖИТЬ")) {
+            UnityEditor.SessionState.SetString(prefix + "status", "not_sent_target_changed"); return;
+        }
+    }
+    var simple = target as Survival.Widgets.UI.Button.UISimpleButton;
+    if (simple != null && simple.BlockButton) { UnityEditor.SessionState.SetString(prefix + "status", "not_sent_blocked"); return; }
+    var rect = target.GetComponent<UnityEngine.RectTransform>();
+    var canvas = target.GetComponentInParent<UnityEngine.Canvas>();
+    if (rect == null || canvas == null) { UnityEditor.SessionState.SetString(prefix + "status", "not_sent_no_rect"); return; }
+    var cam = canvas.renderMode == UnityEngine.RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+    foreach (var off in new [] { new UnityEngine.Vector2(0,0.46f), new UnityEngine.Vector2(-0.35f,0.46f), new UnityEngine.Vector2(0.35f,0.46f), UnityEngine.Vector2.zero }) {
+        var point = UnityEngine.RectTransformUtility.WorldToScreenPoint(cam, rect.TransformPoint(rect.rect.center + new UnityEngine.Vector2(rect.rect.width*off.x,rect.rect.height*off.y)));
+        var data = new UnityEngine.EventSystems.PointerEventData(es) { position = point, pressPosition = point,
+            button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, pointerId = -1, eligibleForClick = true,
+            clickCount = 1, clickTime = UnityEngine.Time.unscaledTime };
+        var hits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+        es.RaycastAll(data, hits);
+        if (hits.Count == 0 || hits[0].gameObject == null || !hits[0].gameObject.transform.IsChildOf(target.transform)) continue;
+        data.pointerCurrentRaycast = hits[0]; data.pointerPressRaycast = hits[0];
+        data.pointerPress = target.gameObject; data.rawPointerPress = hits[0].gameObject;
+        UnityEngine.EventSystems.ExecuteEvents.Execute(target.gameObject, data, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+        UnityEngine.EventSystems.ExecuteEvents.Execute(target.gameObject, data, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+        if (errorWatchBlocked()) { UnityEditor.SessionState.SetString(prefix + "status", "blocked_new_error"); return; }
+        if (target != null && target.gameObject.activeInHierarchy)
+            UnityEngine.EventSystems.ExecuteEvents.Execute(target.gameObject, data, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+        UnityEditor.SessionState.SetString(prefix + "status", "sent"); return;
+    }
+    UnityEditor.SessionState.SetString(prefix + "status", "not_sent_covered");
+};
+es.StartCoroutine(new [] {0,1}.Select(i => { if(i == 1) send(); return (object)null; }).GetEnumerator());
+return new { status = "pending", role = role, sequence = sequence };

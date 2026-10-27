@@ -1,0 +1,110 @@
+// Candidate C#6 execute_code body. Ordinary UI input only; never writes player/game data.
+// SessionState QaAgent.InputMotor.v1: .mode=prepare|run|snapshot|stop;
+// .action=move|hold_use, .seconds=(0,2], .move_x/right and .move_y/forward in [-1,1].
+// .require_attack defaults true: stop immediately when the shark attack ends.
+const string key = "QaAgent.InputMotor.v1";
+var mode = UnityEditor.SessionState.GetString(key + ".mode", "snapshot");
+if (mode == "prepare") return new { status = "compiled_only", input_sent = false };
+__ERROR_WATCH_SETUP__
+var previous = System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if (mode == "snapshot") return previous == null ? (object)new { status = "idle" } : previous["result"];
+if (mode == "stop") {
+    if (previous != null && !(bool)previous["finished"]) ((System.Action)previous["cancel"])();
+    return previous == null ? (object)new { status = "idle" } : previous["result"];
+}
+if (mode != "run") return new { status = "invalid_mode" };
+var priority=System.AppDomain.CurrentDomain.GetData("QaAgent.SharkDefense.v1") as System.Collections.Generic.Dictionary<string,object>;
+if(!key.StartsWith("QaAgent.Shark")&&priority!=null&&(bool)priority["busy"])return new{status="preempted_shark"};
+if (previous != null && !(bool)previous["finished"]) return new { status = "already_running" };
+if (errorWatchBlocked()) return new { status = "blocked_new_error", error_watch = errorWatchSnapshot() };
+if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused || !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false)) return new { status = "not_active" };
+var action = UnityEditor.SessionState.GetString(key + ".action", "");
+var duration = UnityEditor.SessionState.GetFloat(key + ".seconds", .5f);
+if ((action != "move" && action != "hold_use") || float.IsNaN(duration) || float.IsInfinity(duration) || duration <= 0 || duration > 2) return new { status = "invalid_parameters" };
+var move = new UnityEngine.Vector2(UnityEditor.SessionState.GetFloat(key + ".move_x", 0), UnityEditor.SessionState.GetFloat(key + ".move_y", 0));
+if (float.IsNaN(move.x) || float.IsInfinity(move.x) || float.IsNaN(move.y) || float.IsInfinity(move.y) || (action == "move" && move.sqrMagnitude < .001f)) return new { status = "invalid_move" };
+move = UnityEngine.Vector2.ClampMagnitude(move, 1);
+var requireAttack = UnityEditor.SessionState.GetBool(key + ".require_attack", true);
+var hud = UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+var movement = UnityEngine.Object.FindObjectOfType<Survival.Views.Movement>();
+var es = UnityEngine.EventSystems.EventSystem.current;
+if (hud == null || movement == null || es == null || hud.MoveTouchpad == null || hud.ActionButtons == null || hud.ActionButtons.Length == 0) return new { status = "input_source_unknown" };
+var stick = hud.MoveTouchpad; var button = hud.ActionButtons[0];
+var control = action == "move" ? (UnityEngine.Component)stick : button;
+if (control == null || !control.gameObject.activeInHierarchy || (action == "move" && stick.Block) || (action == "hold_use" && button.BlockButton)) return new { status = "control_unavailable" };
+if (action == "move" && stick.IsDragging) return new { status = "stick_already_dragging" };
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var radiusField = stick.GetType().GetField("_radius", flags);
+var radius = radiusField == null ? 0 : (float)radiusField.GetValue(stick);
+if (action == "move" && radius <= 0) return new { status = "stick_radius_unknown" };
+var rect = control.GetComponent<UnityEngine.RectTransform>(); var canvas = control.GetComponentInParent<UnityEngine.Canvas>();
+var view = UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().FirstOrDefault(w => w.GetType().Name == "GameView");
+if (rect == null || canvas == null || view == null) return new { status = "view_source_unknown" };
+view.Focus(); view.Repaint();
+UnityEngine.EventSystems.PointerEventData pointer = null;
+foreach (var offset in (action == "move" ? new [] { new UnityEngine.Vector2(-.4f,-.4f),new UnityEngine.Vector2(-.4f,0),new UnityEngine.Vector2(-.25f,-.3f),UnityEngine.Vector2.zero } : new [] { new UnityEngine.Vector2(-.35f, 0), new UnityEngine.Vector2(-.35f, .46f), UnityEngine.Vector2.zero })) {
+    var local = rect.rect.center + new UnityEngine.Vector2(rect.rect.width * offset.x, rect.rect.height * offset.y);
+    var point = UnityEngine.RectTransformUtility.WorldToScreenPoint(canvas.renderMode == UnityEngine.RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, rect.TransformPoint(local));
+    var data = new UnityEngine.EventSystems.PointerEventData(es) { position = point, pressPosition = point, pointerId = -84, button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, useDragThreshold = false };
+    var hits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>(); es.RaycastAll(data, hits);
+    if (hits.Count == 0 || hits[0].gameObject == null) continue;
+    var handler = action == "move" ? UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IDragHandler>(hits[0].gameObject) : UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IPointerDownHandler>(hits[0].gameObject);
+    if (handler != control.gameObject) continue;
+    data.pointerCurrentRaycast = hits[0]; data.pointerPressRaycast = hits[0]; data.pointerPress = control.gameObject; data.rawPointerPress = hits[0].gameObject;
+    pointer = data; break;
+}
+if (pointer == null) return new { status = "control_covered" };
+var initialPosition = movement.Position; var scene = movement.gameObject.scene.handle; var controlScene = control.gameObject.scene.handle;
+var generation = UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0);
+var began = UnityEditor.EditorApplication.timeSinceStartup; double inputAt = -1;
+bool finished = false, pressed = false, dragging = false;
+UnityEditor.EditorApplication.CallbackFunction watchdog = null;
+var state = new System.Collections.Generic.Dictionary<string,object> { { "finished", false }, { "result", new { status = "running", action = action } } };
+System.AppDomain.CurrentDomain.SetData(key, state);
+System.Action release = () => {
+    pointer.delta = UnityEngine.Vector2.zero;
+    try { if (dragging && stick != null) UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.endDragHandler); }
+    finally { dragging = false; try { if (pressed && control != null) UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler); } finally { pressed = false; } }
+};
+System.Action<string> finish = outcome => {
+    if (finished) return; finished = true; if (watchdog != null) UnityEditor.EditorApplication.update -= watchdog;
+    try { release(); } finally {
+        var finalPosition=movement==null?initialPosition:movement.Position;state["finished"] = true; state["result"] = new { status = outcome, action = action, input_sent = inputAt >= 0, released = !pressed && !dragging,
+            requested_seconds = duration, held_seconds = inputAt < 0 ? 0 : System.Math.Round(UnityEditor.EditorApplication.timeSinceStartup - inputAt, 3),
+            start_world = new[]{initialPosition.x,initialPosition.y,initialPosition.z}, end_world = new[]{finalPosition.x,finalPosition.y,finalPosition.z},
+            attack_active = Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack, error_watch = errorWatchSnapshot() };
+    }
+};
+state["cancel"] = (System.Action)(() => finish("cancelled"));
+System.Func<string> interruption = () => {
+    if (errorWatchBlocked()) return "blocked_new_error";
+    if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused || !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false) || generation != UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0)) return "cancelled";
+    if (movement == null || control == null || movement.gameObject.scene.handle != scene || control.gameObject.scene.handle != controlScene) return "scene_changed";
+    if (!control.gameObject.activeInHierarchy || (action == "move" && stick.Block) || (action == "hold_use" && button.BlockButton)) return "control_changed";
+    if (view == null || UnityEditor.EditorWindow.focusedWindow != view) return "focus_lost";
+    if (requireAttack && !Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack) return "attack_ended";
+    if (inputAt >= 0 && UnityEditor.EditorApplication.timeSinceStartup - inputAt >= duration) return "completed";
+    if (UnityEditor.EditorApplication.timeSinceStartup - began > 2.5) return "timeout";
+    return null;
+};
+watchdog = () => { if (finished) return; try { var reason = interruption(); if (reason != null) { finish(reason); return; } UnityEditor.EditorApplication.QueuePlayerLoopUpdate(); view.Repaint(); } catch { finish("executor_exception"); } };
+UnityEditor.EditorApplication.update += watchdog;
+es.StartCoroutine(new [] { 0, 1 }.Select(i => {
+    if (i == 1 && !finished) { try {
+        var reason = interruption(); if (reason != null) finish(reason);
+        else {
+            inputAt = UnityEditor.EditorApplication.timeSinceStartup; pressed = true;
+            UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+            if (action == "move") {
+                dragging = true; pointer.dragging = true; pointer.pointerDrag = stick.gameObject;
+                UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.initializePotentialDrag);
+                UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.beginDragHandler);
+                pointer.delta = move * radius; pointer.position = pointer.pressPosition + pointer.delta;
+                UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.dragHandler);
+            }
+            state["result"] = new { status = "running", action = action, input_sent = true, requested_seconds = duration };
+        }
+    } catch { finish("executor_exception"); } }
+    return (object)null;
+}).GetEnumerator());
+return new { status = "running", action = action, input_sent = false, requested_seconds = duration };

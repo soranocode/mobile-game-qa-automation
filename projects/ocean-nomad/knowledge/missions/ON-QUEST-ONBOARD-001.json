@@ -1,0 +1,124 @@
+{
+  "id": "ON-QUEST-ONBOARD-001",
+  "kind": "demonstration_knowledge",
+  "title": "Первые три квеста нового выживания: intro, control, hands_collect",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0 dev",
+  "runtime": "UnityEditor 6000.0.66f2",
+  "status": "provisional",
+  "observed_at": "2026-10-22",
+  "source": "Человек сообщил о выполнении трёх начальных квестов; журнал Quests, актуальный кэш подписей TestGUI и локальные данные квестов",
+  "evidence_refs": [
+    "raft-qa-demonstrations/20261022T131645Z-5d6ab3d8/analysis/events-summary.json",
+    "unity-mcp/quest-learning/20261022T131645Z-5d6ab3d8/reconstruction.json",
+    "unity-mcp/quest-learning/20261022T131645Z-5d6ab3d8/runtime-layout-after-demo.json",
+    "raft-qa-demonstrations/20261023T064543Z-e586a820/analysis/semantic-evidence.json",
+    "unity-mcp/quest-learning/20261023T064543Z-e586a820/interpretation.json"
+  ],
+  "capture": {
+    "seconds": 53.583,
+    "journal_complete": true,
+    "video": "disabled; человек подтвердил отсутствие отдельного видео",
+    "agent_input": false
+  },
+  "reconstruction": "Три выбора в первой колонке первой страницы соответствуют текущим ключам intro/control/hands_collect. Источник сетки: Width300,Height80,StartY135 при 1280x720; это доказательство разбора, а не координаты для будущего исполнения. Прямого IMGUI-лога выбранных названий нет.",
+  "quests": [
+    {
+      "uid": "intro",
+      "meaning": "Сюжетное вступление",
+      "human_actions": "Вызвал intro, дважды Назад, затем пять кликов по StoryboardWindow/Next и один StoryboardWindow/Finish.",
+      "time_seconds": [
+        5.022,
+        14.47
+      ],
+      "source_expectation": "Storyboard 1_1 → 1_2 → 1_3 → 1_4 → 1_5; шаг ждёт статистику Storyboard.1.finish.",
+      "reproduction": "На текущей сюжетной странице нажимать Далее/Next; на последней — завершающую кнопку Finish. Ориентироваться на состояние окна, не отправлять фиксированно пять Next.",
+      "verification": "Завершение вступления/квеста и исчезновение Storyboard. Пять записанных кликов не доказывают пять успешных переходов.",
+      "source_refs": [
+        "Assets/Settings/Settings/Quest/QuestStepsDatabase.asset:18",
+        "Assets/Settings/Settings/Quest/QuestTriggerDatabase.asset:6351",
+        "Assets/Settings/Settings/StoryboardDatabase.asset:18"
+      ]
+    },
+    {
+      "uid": "control",
+      "meaning": "Обучение движению и повороту камеры",
+      "human_actions": "Вызвал control, дважды Назад; drag джойстика 24.40–29.08с, затем drag зоны Look 30.62–32.71с; далее короткие W/A/D/A.",
+      "time_seconds": [
+        20.704,
+        35.098
+      ],
+      "source_expectation": "Последовательные этапы movement → camera. Подсказки: Для передвижения используйте джойстик!; Для поворота головы проведите пальцем по экрану. Этапы слушают EndDrag соответствующего touchpad; во время обучения камере движение временно блокируется.",
+      "reproduction": "Короткое осмысленное перетаскивание актуального джойстика с отпусканием, затем перетаскивание актуальной зоны обзора с отпусканием. Приход следующей подсказки определяет переход; WASD не заменяет показанное обучение джойстику без проверки.",
+      "verification": "Наблюдать фактическое движение/поворот и смену соответствующего этапа. Не имитировать успешное обучение прямым вызовом EndDrag или игровых сигналов.",
+      "performance": "Человеческие удержания 4,7с и 2,1с не являются обязательными ожиданиями по источнику. Минимальная надёжная длительность реального drag ещё не измерена.",
+      "source_refs": [
+        "Assets/Settings/Settings/Quest/QuestFlowDatabase.asset:18",
+        "Assets/Scripts/Tutorial/UI/UITutorialView.cs:27",
+        "Assets/Scripts/Tutorial/UI/UITutorialView.cs:49"
+      ]
+    },
+    {
+      "uid": "hands_collect",
+      "meaning": "Подойти и собрать два учебных ресурса",
+      "human_actions": "Вызвал hands_collect, дважды Назад; нажал DialogChoiceButton в42.42с; затем перемещался WASD, поворачивал Look и дважды нажимал UIControlsButton1/Icon в45.33 и48.83с.",
+      "time_seconds": [
+        38.123,
+        52.055
+      ],
+      "source_expectation": "Диалог1, затем учебное бревно и мусор; подсказка Подойди и собери ресурсы. Шаг Соберите ресурсы требует ObjectCollect для LogTutotial и TrashTutorial, count2. Индикация указывает Controll.Action.Pickup.",
+      "reproduction": "Актуальное решение хранится в ON-QUEST-HANDS-COLLECT-001: учесть автонаведение игры после диалога, подойти и собрать руками; положение и доступность цели брать из текущего состояния.",
+      "verification": "Сбор двух нужных ресурсов и смена шага/завершение; два клика по основной кнопке сами по себе не доказывают два подбора.",
+      "uncertainty": "Журнал не записал текст ответа диалога и активную деятельность основной кнопки. Связь её двух кликов с Pickup выводится из этапа и конфигурации, напрямую в тот момент не наблюдалась.",
+      "source_refs": [
+        "Assets/Settings/Settings/Quest/QuestStepsDatabase.asset:42",
+        "Assets/Settings/Settings/Quest/QuestTriggerDatabase.asset:71",
+        "Assets/Settings/Settings/IndicationSequencesDatabase.asset:18",
+        "Assets/Scripts/Survival/Controllers/PickablesManager.cs:111"
+      ]
+    }
+  ],
+  "verification": {
+    "human_report": "Выполнил три квеста, показываемые в начале нового выживания",
+    "agent_replay": "PARTIAL_2_OF_3_WITH_HUMAN_GUIDANCE",
+    "independent_quest_completion_signal_in_capture": false,
+    "speed_benchmark": "NOT_VALID: подготовка, исправление ввода и вмешательства человека"
+  },
+  "last_agent_attempt": {
+    "episode": "2026-10-22T13-32-58.413Z",
+    "report": "unity-mcp/quest-replay/2026-10-22T13-32-58.413Z/report.json",
+    "intro": "Подтверждены новый requested:intro, started:intro, done:intro;4успешных Next+Finish, Storyboard закрыт. Дополнительный Next не был отправлен из-за временного перекрытия.",
+    "intro_none_overlay": "Человек уточнил: нажимать левее внутри Далее, чтобы не попадать на dev None. Проверенная открытая часть — левая часть актуального RectTransform, с raycast; координату не кэшировать. Между страницами Fade может временно перекрывать кнопку, ждать готовности, не повторять уже успешный переход.",
+    "control": "Джойстик реально переместил игрока примерно0,45unity_unit; movement стал1/1, camera затем завершился, получен новый done:control. Первые EndDrag засчитали этап без фактического поворота; это не было достаточным физическим подтверждением. После исправления фокуса реальный поворот подтверждён изменением CameraForward.",
+    "focus_precondition": "Нужен фокус именно Game View, а не только окно Unity; Movement блокирует вращение при потере фокуса. Нормальный EditorWindow.Focus+Repaint дал Application.isFocused=true. Системная активация через computer-use сама оставила Inspector в фокусе; два захвата окна завершились timeout, нативных координатных кликов не выполняли.",
+    "gesture_policy": "Обычный EventSystem down/begin-drag/drag/end-drag/up с реальными игровыми кадрами; нельзя засчитывать физическое управление только по EndDrag. Короткий жест0,2–0,3с применялся, но полного benchmark и апрува скорости нет.",
+    "hands_collect": "Новый requested+started подтверждён, диалог ЗАКРЫТЬ закрыт. Квест0/2: обе созданные учебные вещи неактивны. У QuestObject res_collected_log/trash enabledByDefault=true, но сохранённые состояния обоихfalse; источник применяет их после предыдущего сбора и выключает новые объекты.",
+    "hands_collect_boundary": "BLOCKED_BY_SAVED_OBJECT_STATE. Не включать объекты через код, не отправлять ObjectCollect и не нажимать основную кнопку Pistol вместо отсутствующего Pickup. Для следующей попытки нужна согласованная подготовка состояния этих объектов; это проблема повторного Editor-сценария, не доказанный дефект чистого нового выживания.",
+    "new_red_errors": 0,
+    "cleanup": "Чит-панель закрыта, hands_collect остаётся0/2, фоновые жесты завершены, подписки наблюдателя сняты, session.active=false/background=false. Прогресс/сохранения принудительно не меняли.",
+    "executor_status": "Кандидатные C# примитивы сохранены рядом с локальным отчётом; в approved skill registry не добавлены. Node qaQuestRuntime содержит helpers, только после qaSession.begin."
+  },
+  "related_ids": [
+    "ON-QUEST-START-001",
+    "ON-UI-DEVTOOLS-001",
+    "ON-UI-ERRORWATCH-001",
+    "ON-QUEST-HANDS-COLLECT-001",
+    "ON-GAME-NEW-SURVIVAL-001",
+    "ON-MECH-GUIDED-CAMERA-001"
+  ],
+  "scope": "Изучены только эти три начальных квеста. Выполнение через чит-панель не считается проверкой естественного запуска новой игры. Не переносить позиции игрока/ресурсов или временные паузы записи в постоянный маршрут.",
+  "updated_at": "2026-10-23",
+  "latest_human_demonstration": {
+    "date": "2026-10-23",
+    "label": "Hand_collect",
+    "session_id": "e586a8202fa149c2a625477ed4d33904",
+    "duration_seconds": 30.391,
+    "video": false,
+    "outcome": "HUMAN_CONFIRMED_COMPLETE",
+    "human_confirmation": "Оба ресурса подобраны руками, квест завершён.",
+    "human_explanation": "Начальный поворот после диалога делает игра; в реальном новом выживании нет крюка, ресурсы нужно подбирать руками.",
+    "journal_evidence": "Два возврата из чит-панели, диалог, поворот без активного Look-drag, ручные W/D и Look, два нажатия UIControlsButton1/Icon.",
+    "limits": "Журнал не содержит UID выбранного ресурса, вида действия, снаряжения и завершения квеста. Порядок предметов неизвестен. Не агентный PASS и не benchmark.",
+    "knowledge_owner": "ON-QUEST-HANDS-COLLECT-001"
+  }
+}

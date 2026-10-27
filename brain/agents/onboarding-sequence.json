@@ -1,0 +1,23 @@
+{
+  "schema": "ocean-onboarding-sequence/1",
+  "id": "learned-onboarding",
+  "updated_at": "2026-10-27",
+  "scope": "Current learned and packaged missions, Ocean Nomad 2.11.0 dev, Unity Editor",
+  "mission_order": [
+    "intro",
+    "control",
+    "wooden_hook",
+    "hook_use",
+    "shark_attack"
+  ],
+  "deferred": [
+    {
+      "mission": "hands_collect",
+      "reason": "Human deferred this mission after the Editor activation problem; no prepared handler in the current catalog. Not a passed or executed step."
+    }
+  ],
+  "prepare_entry_point": "tools/agent-runtime/catalog.mjs#prepareSelectedMissions",
+  "execute_entry_point": "tools/agent-runtime/catalog.mjs#executeSelectedMissions",
+  "instructions": "brain/agents/ONBOARDING_RUN.md",
+  "execution_authorized": false
+}

@@ -1,0 +1,106 @@
+// execute_code C#6 method body. Candidate: not runtime verified.
+// Ordinary world pointer click only; the game's UI owns approach/slot choice/attack.
+// SessionState: QaAgent.Shark.target = live Collider instance ID;
+// QaAgent.Shark.click = false (preflight) / true (send once, reset before scheduling).
+const string key = "QaAgent.Shark";
+if (UnityEditor.SessionState.GetBool("QaAgent.FastUi.warmup", false))
+    return new { status = "compiled_only", input_sent = false };
+__ERROR_WATCH_SETUP__
+if (errorWatchBlocked()) return new { status = "blocked_new_error", error_watch = errorWatchSnapshot() };
+if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused ||
+    !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false)) return new { status = "not_active" };
+if (!Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack) return new { status = "not_attacking" };
+var target = UnityEditor.EditorUtility.InstanceIDToObject(UnityEditor.SessionState.GetInt(key + ".target", 0)) as UnityEngine.Collider;
+if (target == null || !target.enabled || !target.gameObject.activeInHierarchy ||
+    !target.gameObject.scene.IsValid() || !target.gameObject.scene.isLoaded ||
+    target.gameObject.layer != UnityEngine.LayerMask.NameToLayer("Enemy")) return new { status = "target_unavailable" };
+var damageView = target.GetComponent<DamageSystem.Interfaces.IDamageView>();
+if (damageView == null) return new { status = "target_not_directly_selectable" };
+var es = UnityEngine.EventSystems.EventSystem.current;
+var cam = UnityEngine.Camera.main;
+var hud = UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+if (es == null || cam == null || hud == null || hud.ActionButtons.Length == 0) return new { status = "input_source_unknown" };
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var binding = hud.ActionButtons[0].GetType().GetField("_pressExtended", flags).GetValue(hud.ActionButtons[0]) as System.Delegate;
+if (binding == null || binding.Target == null) return new { status = "hud_binding_unknown" };
+var activityField = binding.Target.GetType().GetField("_activityController", flags);
+var activity = activityField == null ? null : activityField.GetValue(binding.Target) as Survival.Activities.ActivityController;
+if (activity == null) return new { status = "activity_source_unknown" };
+var beltField = activity.GetType().GetField("_beltManager", flags);
+if (beltField == null) return new { status = "belt_source_unknown" };
+var belt = beltField.GetValue(activity) as Survival.Windows.Panels.BeltManager;
+if (belt == null) return new { status = "belt_source_unknown" };
+var firstWeapon = belt.Cells.FirstOrDefault(c => c.Thing != null && c.Thing.Kind == Things.Enums.ThingClass.Weapon);
+if (firstWeapon == null) return new { status = "no_weapon_for_automatic_approach" };
+var willSelect = firstWeapon.Thing.GetUid;
+System.Func<UnityEngine.GameObject,string> path = go => {
+    var p = go.name; for (var t = go.transform.parent; t != null; t = t.parent) p = t.name + "/" + p; return p;
+};
+System.Func<object> attempt = () => {
+    if (errorWatchBlocked()) return new { status = "blocked_new_error" };
+    if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused ||
+        !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false)) return new { status = "not_active" };
+    if (!Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack) return new { status = "not_attacking" };
+    if (target == null || !target.enabled || !target.gameObject.activeInHierarchy || cam != UnityEngine.Camera.main)
+        return new { status = "target_changed" };
+    if (Construct.Replace.Signals.ReplaceSignals.IsCraft || Construct.Replace.Signals.ReplaceSignals.IsReplace)
+        return new { status = "construction_active" };
+    var centers = new [] { target.bounds.center, target.bounds.center + UnityEngine.Vector3.up * target.bounds.extents.y * .35f,
+        target.bounds.center - UnityEngine.Vector3.up * target.bounds.extents.y * .35f };
+    foreach (var center in centers) {
+        var projected = cam.WorldToScreenPoint(center);
+        if (projected.z <= 0 || projected.x <= 0 || projected.y <= 0 || projected.x >= UnityEngine.Screen.width || projected.y >= UnityEngine.Screen.height) continue;
+        var point = new UnityEngine.Vector2(projected.x, projected.y);
+        var data = new UnityEngine.EventSystems.PointerEventData(es) { position = point, pressPosition = point, delta = UnityEngine.Vector2.zero,
+            button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, pointerId = -79, eligibleForClick = true,
+            clickCount = 1, clickTime = UnityEngine.Time.unscaledTime };
+        var uiHits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>(); es.RaycastAll(data, uiHits);
+        if (uiHits.Count == 0 || uiHits[0].gameObject == null) continue;
+        var clickGo = UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IPointerClickHandler>(uiHits[0].gameObject);
+        var world = clickGo == null ? null : clickGo.GetComponent<Survival.Widgets.UI.Controll.UIGameWorldRaycast>();
+        if (world == null || !world.isActiveAndEnabled || world._blocker == null || world._blocker.IsBlock()) continue;
+        var mask = 0; var maximum = 0f;
+        foreach (var rule in world._handlers) { mask |= rule.LayerMask; maximum = UnityEngine.Mathf.Max(maximum, rule.MaxDistance); }
+        // Match the game's five-hit raycast and nearest registered-layer object.
+        var buffer = new UnityEngine.RaycastHit[5];
+        var count = UnityEngine.Physics.RaycastNonAlloc(cam.ScreenPointToRay(point), buffer, maximum, mask);
+        var actualHits = buffer.Take(count).Where(h => h.collider != null && world._handlers.Any(r =>
+            (r.LayerMask & (1 << h.collider.gameObject.layer)) != 0 && h.distance <= r.MaxDistance)).OrderBy(h => h.distance).ToArray();
+        if (actualHits.Length == 0 || actualHits[0].collider.GetComponent<DamageSystem.Interfaces.IDamageView>() != damageView) continue;
+        var sending = UnityEditor.SessionState.GetBool(key + ".click", false);
+        if (!sending) return new { status = "ready", input_sent = false, target_id = target.GetInstanceID(),
+            ui_path = path(clickGo), screen_x = point.x, screen_y = point.y, will_select_item_uid = willSelect };
+        UnityEditor.SessionState.SetBool(key + ".click", false);
+        data.pointerCurrentRaycast = uiHits[0]; data.pointerPressRaycast = uiHits[0];
+        data.pointerPress = clickGo; data.rawPointerPress = uiHits[0].gameObject;
+        UnityEngine.EventSystems.ExecuteEvents.Execute(clickGo, data, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+        UnityEngine.EventSystems.ExecuteEvents.Execute(clickGo, data, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+        if (errorWatchBlocked()) return new { status = "blocked_new_error" };
+        UnityEngine.EventSystems.ExecuteEvents.Execute(clickGo, data, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+        return new { status = "sent", input_sent = true, target_id = target.GetInstanceID(), ui_path = path(clickGo),
+            screen_x = point.x, screen_y = point.y, will_select_item_uid = willSelect };
+    }
+    return new { status = "no_unoccluded_enemy_projection", input_sent = false };
+};
+if (!UnityEditor.SessionState.GetBool(key + ".click", false)) return attempt();
+var sequence = UnityEditor.SessionState.GetInt(key + ".sequence", 0) + 1;
+UnityEditor.SessionState.SetInt(key + ".sequence", sequence);
+var sessionSequence = UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0);
+var expires = System.DateTime.UtcNow.AddSeconds(2);
+UnityEditor.SessionState.SetString(key + ".status", "pending");
+es.StartCoroutine(new [] { 0, 1 }.Select(i => {
+    if (i == 1) {
+        if (sequence != UnityEditor.SessionState.GetInt(key + ".sequence", 0) ||
+            sessionSequence != UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0) || System.DateTime.UtcNow > expires) {
+            UnityEditor.SessionState.SetBool(key + ".click", false);
+            UnityEditor.SessionState.SetString(key + ".status", "cancelled_without_input");
+        } else {
+            var result = attempt();
+            UnityEditor.SessionState.SetBool(key + ".click", false);
+            System.AppDomain.CurrentDomain.SetData(key + ".world_click_result", result);
+            UnityEditor.SessionState.SetString(key + ".status", "finished");
+        }
+    }
+    return (object)null;
+}).GetEnumerator());
+return new { status = "pending", input_sent = false, sequence = sequence, will_select_item_uid = willSelect };

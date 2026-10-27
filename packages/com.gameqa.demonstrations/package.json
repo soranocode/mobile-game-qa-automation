@@ -1,0 +1,14 @@
+{
+  "name": "com.gameqa.demonstrations",
+  "version": "0.2.0",
+  "displayName": "Game QA Demonstration Recorder",
+  "description": "Editor-only input, state and Game View recording with extensible observation providers. Includes a read-only Ocean Nomad adapter.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.recorder": "5.1.7",
+    "com.unity.nuget.newtonsoft-json": "3.2.1",
+    "com.unity.ugui": "2.0.0"
+  },
+  "keywords": ["qa", "demonstration", "recording", "editor"],
+  "author": {"name": "Game QA Automation"}
+}

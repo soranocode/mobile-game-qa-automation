@@ -1,0 +1,12 @@
+// Read-only readiness. Uses already bound HUD delegates; does not create services.
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var hud = UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+if (hud == null || hud.ActionButtons.Length < 1) return new { status = "hud_unavailable" };
+var callback = hud.ActionButtons[0].GetType().GetField("_pressExtended", flags).GetValue(hud.ActionButtons[0]) as System.Delegate;
+if (callback == null || callback.Target == null) return new { status = "hud_binding_unknown" };
+var owner = callback.Target;
+var activity = (Survival.Activities.ActivityController)owner.GetType().GetField("_activityController", flags).GetValue(owner);
+return new { status = "observed", primary = activity.CurrentActivity == null ? null : activity.CurrentActivity.GetType().Name,
+    secondary = activity.OtherActivity == null ? null : activity.OtherActivity.GetType().Name,
+    using_now = activity.IsUsing, player_position = Survival.Windows.Panels.HudControlsManager.PlayerPosition.ToString(),
+    held_item = activity.GetType().GetProperty("HeldItem", flags).GetValue(activity, null) };

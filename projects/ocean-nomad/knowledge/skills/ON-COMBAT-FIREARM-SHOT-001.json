@@ -1,0 +1,53 @@
+{
+  "id": "ON-COMBAT-FIREARM-SHOT-001",
+  "kind": "approved_game_skill",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0 dev",
+  "runtime": "UnityEditor6000.0.66f2",
+  "status": "HUMAN_APPROVED_SCOPED",
+  "updated_at": "2026-10-26",
+  "human_approval": {
+    "source": "human_user",
+    "quote": "сейчас ты научился стрелять из огнестрела запомни навык",
+    "scope": "Одна наблюдённая защита от акулы огнестрелом; не апрув ближнего боя, смены/перезарядки любого оружия или общего возобновления задач"
+  },
+  "intent": "Навестись на актуальную цель и использовать экипированный огнестрел обычной кнопкой UI через MCP",
+  "entry_point": "projects/ocean-nomad/tools/shark-defense/install.mjs#defendCurrentAttack",
+  "execution": [
+    "Прогреть Look и обычную кнопку использования до нападения",
+    "После сигнала получить свежие ID, положение врага и параметры текущего оружия",
+    "Навестись обычным Look; использовать primary UI, остановить ввод при результате/ошибке",
+    "Подтвердить урон и отдельное событие отступления; нажатие не считается попаданием"
+  ],
+  "observed": {
+    "attack_epoch": 1,
+    "damage": 44,
+    "hp_before": 100,
+    "hp_after": 56,
+    "outcome": "repelled",
+    "wake_to_repel_seconds": 2.922653,
+    "post_run_equipment": {
+      "uid": "Rifle",
+      "activity": "Pistol",
+      "range": 30,
+      "interval_seconds": 0.5
+    },
+    "equipment_timing": "UID прочитан после эпизода; в wake этого запуска записаны range30 и событие урона. Человек подтвердил огнестрел."
+  },
+  "limits": [
+    "С 27.10 ranged-ветка использует Rifle HitScanShooter.CollectHits/IsRayBlockedBySolid; стрельба с места и перестроение при укрытии прошли проверки выбора и компиляции, новый live бой ещё не подтверждён",
+    "Проверен один выстрел с уроном, не перезарядка/все виды оружия",
+    "Не заявлять, что это был удар крюком",
+    "Диапазон30 и урон44 — наблюдения текущего оружия/эпизода, не постоянные параметры всех пушек"
+  ],
+  "knowledge_dependencies": [
+    "ON-ENEMY-SHARK-001",
+    "ON-CONTROL-MOVE-LOOK-001",
+    "ON-UI-ERRORWATCH-001"
+  ],
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "reference": "outputs/unity-mcp/shark-defense/2026-10-26T08-27-00-043Z/live-after-dev-trigger.json",
+    "post_run": "firearm-after-repel.json"
+  }
+}

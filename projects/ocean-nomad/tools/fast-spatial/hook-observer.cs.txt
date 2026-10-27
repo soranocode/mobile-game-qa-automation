@@ -1,0 +1,107 @@
+// execute_code method body, C#6. Replace __MODE__ with prepare, read, or stop.
+// Passive subscriptions and reads only. No Resolve, game commands, or input.
+__ERROR_WATCH_SETUP__
+const string key = "QaAgent.HookObserver.v1";
+var mode = "__MODE__";
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var state = System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string, object>;
+if (mode == "stop") {
+    if (state != null && state.ContainsKey("cleanup")) ((System.Action)state["cleanup"])();
+    return new { status = "stopped", input_sent = false };
+}
+if (mode == "prepare") {
+    if (state != null && state.ContainsKey("cleanup")) ((System.Action)state["cleanup"])();
+    if (!UnityEditor.EditorApplication.isPlaying) return new { status = "not_playing", input_sent = false };
+    var managers = new System.Collections.Generic.List<Quests.QuestManager>();
+    foreach (var gui in UnityEngine.Resources.FindObjectsOfTypeAll<TestGUI>()) {
+        if (gui == null || !gui.isActiveAndEnabled || !gui.gameObject.scene.IsValid() || !gui.gameObject.scene.isLoaded) continue;
+        var panelsField = gui.GetType().GetField("_activePanelList", flags);
+        var panels = panelsField == null ? null : panelsField.GetValue(gui) as System.Collections.IEnumerable;
+        if (panels == null) continue;
+        foreach (var panel in panels) {
+            if (panel == null) continue;
+            var managerField = panel.GetType().GetField("_questManager", flags);
+            var candidate = managerField == null ? null : managerField.GetValue(panel) as Quests.QuestManager;
+            if (candidate != null && !managers.Any(m => object.ReferenceEquals(m, candidate))) managers.Add(candidate);
+        }
+    }
+    if (managers.Count != 1) return new { status = "quest_source_unknown", manager_count = managers.Count, input_sent = false };
+    var manager = managers[0];
+    var signalsField = typeof(Quests.QuestManager).GetField("_signals", flags);
+    var signals = signalsField == null ? null : signalsField.GetValue(manager) as Quests.Signals.QuestSignals;
+    if (signals == null) return new { status = "quest_signals_unknown", input_sent = false };
+    state = new System.Collections.Generic.Dictionary<string, object>();
+    var observed = state;
+    observed["active"] = true;
+    observed["prepared_frame"] = UnityEngine.Time.frameCount;
+    observed["prepared_time"] = UnityEngine.Time.realtimeSinceStartup;
+    observed["manager"] = manager;
+    observed["watched_quest"] = manager.ActiveQuests.FirstOrDefault(q => q.Uid == "hook_use");
+    observed["started"] = new { observed = false };
+    observed["done"] = new { observed = false };
+    var startedSubscription = signals.Started.Listen(q => {
+        if (!(bool)observed["active"] || q == null || q.Uid != "hook_use") return;
+        observed["watched_quest"] = q;
+        observed["done"] = new { observed = false };
+        observed["started"] = new { observed = true, quest_uid = q.Uid,
+            frame = UnityEngine.Time.frameCount, time = UnityEngine.Time.realtimeSinceStartup };
+    });
+    System.IDisposable doneSubscription;
+    try {
+        doneSubscription = signals.Done.Listen(q => {
+            if (!(bool)observed["active"] || q == null || q.Uid != "hook_use" ||
+                !object.ReferenceEquals(q, observed["watched_quest"])) return;
+            var step = q.StartedSteps.FirstOrDefault(s => s.Uid == "use_wooden_hook");
+            observed["done"] = new { observed = true, quest_uid = q.Uid,
+                step_uid = step == null ? null : step.Uid,
+                progress_after = step == null ? 0 : step.Value,
+                need = step == null ? 0 : step.Need,
+                step_complete = step != null && step.IsComplete,
+                quest_finished = q.IsFinished,
+                final_complete = step != null && step.IsComplete && step.Need == 3 && step.Value >= step.Need,
+                frame = UnityEngine.Time.frameCount, time = UnityEngine.Time.realtimeSinceStartup,
+                completion_fresh = true, completion_source = "quest_done_event" };
+        });
+    } catch { startedSubscription.Dispose(); throw; }
+    System.Action cleanup = () => {
+        observed["active"] = false;
+        startedSubscription.Dispose();
+        doneSubscription.Dispose();
+    };
+    observed["cleanup"] = cleanup;
+    System.AppDomain.CurrentDomain.SetData(key, observed);
+    return new { status = "prepared", input_sent = false, prepared_frame = observed["prepared_frame"],
+        prepared_time = observed["prepared_time"], adopted_existing_quest = observed["watched_quest"] != null,
+        manager_source = "existing TestGUI._activePanelList[*]._questManager" };
+}
+if (mode != "read") return new { status = "invalid_mode", input_sent = false };
+var hook = new System.Collections.Generic.Dictionary<string, object> {
+    { "status", "hud_unavailable" }, { "primary", null }, { "secondary", null },
+    { "using_now", null }, { "held_item", null }, { "player_position", null }
+};
+var hud = UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+if (hud != null && hud.ActionButtons != null && hud.ActionButtons.Length > 0 && hud.ActionButtons[0] != null) {
+    var callbackField = hud.ActionButtons[0].GetType().GetField("_pressExtended", flags);
+    var callback = callbackField == null ? null : callbackField.GetValue(hud.ActionButtons[0]) as System.Delegate;
+    var owner = callback == null ? null : callback.Target;
+    var activityField = owner == null ? null : owner.GetType().GetField("_activityController", flags);
+    var activity = activityField == null ? null : activityField.GetValue(owner) as Survival.Activities.ActivityController;
+    if (activity != null) {
+        hook["status"] = "observed";
+        hook["primary"] = activity.CurrentActivity == null ? null : activity.CurrentActivity.GetType().Name;
+        hook["secondary"] = activity.OtherActivity == null ? null : activity.OtherActivity.GetType().Name;
+        hook["using_now"] = activity.IsUsing;
+        hook["player_position"] = Survival.Windows.Panels.HudControlsManager.PlayerPosition.ToString();
+        var heldItem = activity.GetType().GetProperty("HeldItem", flags);
+        hook["held_item"] = heldItem == null ? null : System.Convert.ToString(heldItem.GetValue(activity, null));
+    } else hook["status"] = "hud_binding_unknown";
+}
+var active = state != null && state.ContainsKey("active") && (bool)state["active"];
+return new { status = "observed", input_sent = false,
+    frame = UnityEngine.Time.frameCount, time = UnityEngine.Time.realtimeSinceStartup,
+    playing = UnityEditor.EditorApplication.isPlaying, paused = UnityEditor.EditorApplication.isPaused,
+    world_json = QaDemonstrations.OceanNomadTelemetry.ReadSnapshot().ToString(), hook = hook,
+    observer_active = active, prepared_frame = state == null ? null : state["prepared_frame"],
+    started = active ? state["started"] : new { observed = false },
+    done = active ? state["done"] : new { observed = false },
+    error_blocked = errorWatchBlocked(), error_watch = errorWatchSnapshot() };

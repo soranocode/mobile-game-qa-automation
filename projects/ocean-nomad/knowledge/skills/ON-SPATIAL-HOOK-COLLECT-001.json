@@ -1,0 +1,83 @@
+{
+  "id": "ON-SPATIAL-HOOK-COLLECT-001",
+  "kind": "approved_game_skill",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0 dev",
+  "runtime": "UnityEditor6000.0.66f2",
+  "status": "HUMAN_APPROVED_SCOPED",
+  "updated_at": "2026-10-23",
+  "human_approval": {
+    "source": "human_user",
+    "date": "2026-10-23",
+    "quote": "2 раза прогнал идеально я так и видел это",
+    "scope": "Два полных прогона hook_use: dev-панель → выбор → закрытие → диалог → сбор3целей крюком"
+  },
+  "intent": "По запросу запустить и пройти hook_use обычным UI/Look через MCP",
+  "entry_point": "projects/ocean-nomad/tools/fast-spatial/hook-trial.mjs#runHookTrial",
+  "runtime_bindings": "projects/ocean-nomad/tools/fast-spatial/runtime-bindings.mjs#createHookBindings",
+  "parameters": {
+    "quest_uid": "hook_use only",
+    "targets": "Новые runtime ID/координаты из свежего шага; не сохранять в постоянный маршрут"
+  },
+  "preconditions": [
+    "Play в Game, дев-панель доступна",
+    "Один project-guarded MCP session и один владелец ввода",
+    "Доступен Hook в primary либо secondary",
+    "Подготовка/компиляция и пассивный observer ДО вызова квеста"
+  ],
+  "knowledge_dependencies": [
+    "ON-QUEST-HOOK-USE-001",
+    "ON-MECH-HOOK-001",
+    "ON-CONTROL-MOVE-LOOK-001",
+    "ON-QUEST-START-001",
+    "ON-UI-ERRORWATCH-001"
+  ],
+  "retrieval": "Загрузить этот контракт и нужные зависимости один раз на подзадачу; цикл использует компактное текущее состояние без всей памяти.",
+  "execution": "Методика наведения принадлежит ON-CONTROL-MOVE-LOOK-001; пауза и очередь — ON-MECH-HOOK-001. TestGUI Focus+Move → игровой кадр → Down → игровой кадр → Up; дождаться terminal status, затем1с. Подтверждать реальный переход панели/Started. Между aimed и кликом нет решения модели.",
+  "verification": "Свежий Done конкретного экземпляра hook_use, use_wooden_hook3/3 IsComplete=true; история/исчезновение отдельно не достаточны.",
+  "stop_conditions": [
+    "Новая неожиданная красная ошибка",
+    "Неизвестный/потерянный контекст или результат ввода",
+    "Цель остаётся после первого броска и3повторов",
+    "Hook занят после5с",
+    "Неподдержанная сцена/экипировка/неожиданное окно",
+    "Запрос человека стоп"
+  ],
+  "measurements": [
+    {
+      "trial": 1,
+      "total_seconds": 23.597461199998854,
+      "from_first_click_seconds": 10.08063480000198,
+      "panel_closed_to_first_click_seconds": 1.5640449000000953,
+      "clicks": 3,
+      "fresh_done_3_of_3": true,
+      "new_errors": 0
+    },
+    {
+      "trial": 2,
+      "total_seconds": 21.636383500009774,
+      "from_first_click_seconds": 13.422203000009059,
+      "panel_closed_to_first_click_seconds": 1.8184036999940871,
+      "clicks": 4,
+      "fresh_done_3_of_3": true,
+      "new_errors": 0
+    }
+  ],
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "episode": "2026-10-23-hook-frame-approved",
+    "reference": "outputs/unity-mcp/hook-approved/2026-10-23-hook-frame-approved/report.json"
+  },
+  "limits": [
+    "Одобрен конкретный hook_use в текущей Editor-среде, не все миссии/передвижение/прыжки",
+    "Перезапуск нового ПК/Unity требует восстановления MCP/session и подготовки; одна загрузка Git не устанавливает игру",
+    "Ожидание4/5с не проверено live в этих двух прогонах",
+    "Новые runtime bindings сохраняют проверенные функции; свежий bootstrap на другом ПК ещё не проверен"
+  ],
+  "offline_checks": {
+    "hook_cycle": 14,
+    "hook_queue": 10,
+    "runtime_bindings": 6,
+    "source": "offline tests; separate from2live full trials"
+  }
+}

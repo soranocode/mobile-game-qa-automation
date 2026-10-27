@@ -1,0 +1,24 @@
+{
+  "schema": "ocean-approved-spatial-skills/1",
+  "updated_at": "2026-10-26",
+  "skills": [
+    {
+      "id": "ON-SPATIAL-HOOK-COLLECT-001",
+      "knowledge": "projects/ocean-nomad/knowledge/skills/ON-SPATIAL-HOOK-COLLECT-001.json",
+      "entry_point": "projects/ocean-nomad/tools/fast-spatial/hook-trial.mjs#runHookTrial",
+      "status": "HUMAN_APPROVED_SCOPED"
+    },
+    {
+      "id": "ON-COMBAT-FIREARM-SHOT-001",
+      "knowledge": "projects/ocean-nomad/knowledge/skills/ON-COMBAT-FIREARM-SHOT-001.json",
+      "entry_point": "projects/ocean-nomad/tools/shark-defense/install.mjs#defendCurrentAttack",
+      "status": "HUMAN_APPROVED_SCOPED"
+    },
+    {
+      "id": "ON-COMBAT-SHARK-MELEE-001",
+      "knowledge": "projects/ocean-nomad/knowledge/skills/ON-COMBAT-SHARK-MELEE-001.json",
+      "entry_point": "projects/ocean-nomad/tools/shark-defense/install.mjs#defendCurrentAttack",
+      "status": "HUMAN_APPROVED_SCOPED"
+    }
+  ]
+}

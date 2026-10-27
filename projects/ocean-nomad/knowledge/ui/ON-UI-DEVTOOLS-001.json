@@ -1,0 +1,39 @@
+{
+  "id": "ON-UI-DEVTOOLS-001",
+  "kind": "ui_target",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0 dev",
+  "runtime": "UnityEditor 6000.0.66f2",
+  "observed_at": "2026-10-22",
+  "status": "human_location_confirmed; agent_open_verified_once",
+  "intent": "Открыть чит-панель / TestGUI",
+  "location": "Самый верхний левый угол игрового изображения, непосредственно над сердечком здоровья. Невидимая область без подписи.",
+  "implementation": {
+    "object": "TestGUI(Clone)",
+    "component": "TestGUI",
+    "input_kind": "IMGUI GUI.Button, не UGUI/EventSystem",
+    "source_area": "GUI Rect(0, 0, 90, 90), верхний левый угол в координатах IMGUI; не считать это универсальными экранными пикселями",
+    "source": "Assets/Scripts/TestBuild/TestGUIs/TestGUI.cs:99-104"
+  },
+  "interaction": {
+    "observed_method": "UnityEditor.EditorGUIUtility.QueueGameViewInputEvent: MouseDown, затем MouseUp в отдельном вызове, button=0, clickCount=1; Game View в фокусе",
+    "geometry_policy": "Привязывать цель к открытой полосе НАД сердечком, а не к центру полной области90×90: центр перекрывается HUD. Для QueueGameViewInputEvent использовать пиксели игрового render target, без повторного пересчёта в координаты окна. Оконный SendEvent имеет другую систему координат.",
+    "verified_input_corrections": "В прогоне квестов: MouseMove → MouseDown → отдельный MouseUp, Repaint Game View на обоих краях. Проверять фактический переход: отправка события сама по себе не равна нажатию кнопки.",
+    "failed_attempts": "EditorWindow.SendEvent не открыл панель. QueueGameViewInputEvent с точкой (22,15) также не открыл; (22,70) в текущем layout открыл. Это результаты конкретной геометрии окна, не универсальные точки."
+  },
+  "success_evidence": {
+    "visual": "Синяя сетка разделов: Adv, Diary, IslandProgress, Resources, Cheats, Quests и другие; сверху слева << Назад.",
+    "runtime_read_only": "TestGUI._isTest стал true после MouseUp; поле только прочитано, не изменялось агентом",
+    "new_red_errors": 0,
+    "local_screenshot": "raft/Captures/QaCheatPanel/panel-open.png"
+  },
+  "close": {
+    "human_instruction": "После работы с чит-панелью обязательно закрыть её кнопкой Назад. Нужно 1 или 2 нажатия в зависимости от глубины.",
+    "semantic_target": "<< Назад",
+    "behavior": "Из вложенного раздела первый Назад возвращает список разделов; из списка разделов Назад закрывает панель. Проверять глубину/закрытое состояние, не отправлять лишний клик после закрытия.",
+    "postcondition": "TestGUI закрыта, доступен игровой интерфейс; отсутствие ошибки нажатия само по себе не доказывает закрытие.",
+    "verification": "Правило человека, исходники и человеческая запись; затем агентом реально выполнено Quests → Назад → корень → Назад → закрыто при вызовах intro/hands_collect, _isTest=false. Первые неуспешные попытки ввода сохранены."
+  },
+  "scope": "Агентом проверено только открытие. Работа Quests и закрытие изучены по демонстрации человека; действия внутри агентом не запускались. Наличие в production не предполагается.",
+  "sources": ["Указание и скриншот человека 2026-10-22", "Точечное чтение определения GUI.Button", "MCP-ввод и скриншот результата 2026-10-22"]
+}

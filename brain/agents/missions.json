@@ -1,0 +1,603 @@
+{
+  "schema": "ocean-mission-memory/1",
+  "missions": {
+    "hook_use": {
+      "agent": "ocean-quests",
+      "aliases": [
+        "hook_use",
+        "выловить три предмета",
+        "сбор трех предметов крюком",
+        "миссия с крюком"
+      ],
+      "source_ids": [
+        "ON-SPATIAL-HOOK-COLLECT-001",
+        "ON-QUEST-HOOK-USE-001",
+        "ON-MECH-HOOK-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "projects/ocean-nomad/tools/fast-spatial/hook-trial.mjs#runHookTrial",
+      "implementation_files": [
+        "projects/ocean-nomad/tools/fast-spatial/hook-trial.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/runtime-bindings.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/aim-hook.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/aim-and-hook.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/hook-cycle.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/hook-queue.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/quest-click-frame.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/hook-observer.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/error-monitor.mjs",
+        "tools/agent-runtime/hook-runner.mjs",
+        "tools/agent-runtime/mission-pool.mjs",
+        "tools/agent-runtime/catalog.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-SPATIAL-HOOK-COLLECT-001": "0c5c30597ccdbef97e3d3e7c27424285d59d5e0d30ff0819f8550d7a3ad54d05",
+        "ON-QUEST-HOOK-USE-001": "75ef7ec82075e7cb559596b7409c64c3da451e6f6be8fb43825803343eab947a",
+        "ON-MECH-HOOK-001": "51e8cac7c2b8e4b064376d9652af4396dd4e554723f67a8d644c0c4ba7f746ed",
+        "ON-CONTROL-MOVE-LOOK-001": "d98598c8c6bc627dba79740fe71087b983d3378f0282f4cae45351036f0f9804",
+        "ON-QUEST-START-001": "37840a0e7f12219b32f8a6dd6f63110d700bfa5db5212bcd0f45e5a1648a509b",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "projects/ocean-nomad/tools/fast-spatial/hook-trial.mjs": "77d9af6f9db7c510043ca209edc3f0d2d13b774e894454299c746877dfaeae8b",
+        "projects/ocean-nomad/tools/fast-spatial/runtime-bindings.mjs": "a913e2acd77ebe2c7ab73acfa82897b320122813ea8ee5ed13401e2137cc6b90",
+        "projects/ocean-nomad/tools/fast-spatial/aim-hook.mjs": "b8e25274de9b9e84c12af3cf4cd145d45f5d8a0053aac5efb52f8979e763de5a",
+        "projects/ocean-nomad/tools/fast-spatial/aim-and-hook.cs.txt": "6e8a7d35c6f6456d0d1d74da257acbe274a1a1d48435de88e4075e166d7cb3ce",
+        "projects/ocean-nomad/tools/fast-spatial/hook-cycle.mjs": "97fee0d1e6282376a967234fa6b93650c82d2aaaec11d03c2d79cf1fcdd64ef1",
+        "projects/ocean-nomad/tools/fast-spatial/hook-queue.mjs": "99d37952b38ba9fc326c0c5c7f89bdae7f7bdf0bb6e52e78db91a2531ae703fb",
+        "projects/ocean-nomad/tools/fast-spatial/quest-click-frame.cs.txt": "322114c2912703488e7252a559fb963c16600c2bdfe38fea216990a9b31a4465",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
+        "projects/ocean-nomad/tools/fast-spatial/hook-observer.cs.txt": "afa5e97f43c747772f1ab5bdad04ba3b9b541c1b791b329586b7659129f75075",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
+        "tools/agent-runtime/hook-runner.mjs": "a7883056b745ea9654cbafeefe24dc34d1235f1a11061117833c9cd5894591c3",
+        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+      },
+      "brief": {
+        "goal": "Завершить hook_use свежим use_wooden_hook 3/3 обычным крюком.",
+        "scope": "HUMAN_APPROVED_SCOPED: конкретный квест в текущем Editor. Не универсальный сбор, не новый чистый сейв.",
+        "prepare_before_run": [
+          "Одна project-guarded FastUiSession и один владелец ввода.",
+          "Прогреть точные команды createHookBindings и AimHookAction до запуска квеста; установить пассивное наблюдение.",
+          "Hook должен быть в primary или secondary. Если его нет, вернуть предусловие wooden_hook; не создавать предмет кодом."
+        ],
+        "run": [
+          "Если hook_use уже активен, не запускать повторно. Иначе TestGUI → Quests → hook_use. В чит-панели пауза 1 с, ввод по реальным кадрам.",
+          "Закрыть чит-панель Назад 1-2 раза. Закрыть известный диалог Продолжить. При перекрытии Look сначала закончить известный диалог, не пересчитывать цель и не открывать справочник.",
+          "Получить три актуальные квестовые цели по UID и runtime ID; порядок свободный.",
+          "AimHookAction.run(id,{aimOnly:true}) → сразу обычный UIControlsButton1. Между ними нет отдельного решения модели.",
+          "Ждать 3 с без опросов. Если крюк ещё занят, продлить до 4/5 с. Удалять из очереди любой фактически собранный квестовый предмет, продолжая исходную цель.",
+          "На непойманную цель первый бросок и минимум 3 повтора в пределах бюджета. Не пропускать оставшийся предмет молча."
+        ],
+        "success": "Свежий Done текущего экземпляра hook_use: use_wooden_hook Value3/Need3, IsComplete=true. История/исчезновение квеста недостаточны.",
+        "stop": [
+          "Неизвестный UI/экипировка/сцена или результат ввода",
+          "Новая неожиданная красная ошибка",
+          "Hook занят после 5 с",
+          "Цель осталась после бюджета повторов",
+          "Человек сказал стоп"
+        ],
+        "limits": [
+          "Ветви ожидания 4/5 с покрыты отдельно от двух одобренных live прогонов.",
+          "Не добавлять второе смещение влево: selected-control.cs.txt уже выбирает левую область кнопки.",
+          "Пакет не содержит старые координаты, полные логи или сценарии настроек/боя."
+        ],
+        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "group": "onboarding"
+      },
+      "preparation_entry_point": "tools/agent-runtime/hook-runner.mjs#prepareHookMission"
+    },
+    "settings": {
+      "agent": "ocean-ui",
+      "aliases": [
+        "настройки",
+        "проверка настроек",
+        "settings_ui"
+      ],
+      "source_ids": [
+        "ON-UI-SETTINGS-001",
+        "ON-UI-SKILLS-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "projects/ocean-nomad/tools/fast-ui/settings-skill.mjs#runApprovedSettingsChecks",
+      "implementation_files": [
+        "projects/ocean-nomad/tools/fast-ui/settings-skill.mjs",
+        "projects/ocean-nomad/tools/fast-ui/settings-adapter.mjs",
+        "projects/ocean-nomad/tools/fast-ui/settings-state.cs.txt",
+        "projects/ocean-nomad/tools/fast-ui/selected-control.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/parameter-input.cs.txt",
+        "tools/unity-ui/error-monitor.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-UI-SETTINGS-001": "b5e0311f485ba9af9ff0a26bbce56e9e666711014286ee9153235933784b88c7",
+        "ON-UI-SKILLS-001": "4f5d4c6944f1f3b8acef5d1082fda3e7e613d93e6af19cbcc31dd5cefd84f048",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "projects/ocean-nomad/tools/fast-ui/settings-skill.mjs": "4f74309652ba58d2a72b09f4ba7bb73e6dafecbf4d5c931238ab16b1ffead921",
+        "projects/ocean-nomad/tools/fast-ui/settings-adapter.mjs": "1e23f18424dc04e41bb368ff7f6cd562322751553008b7a577f8d29e07cf983b",
+        "projects/ocean-nomad/tools/fast-ui/settings-state.cs.txt": "04b20998f674e1cdab993ee47a509f6abe5481f041c842e37099a09fe7318f35",
+        "projects/ocean-nomad/tools/fast-ui/selected-control.cs.txt": "bc72ab3b21f84d3cca43b1684668310bf0b2249acc876d78284cd4b4d3453605",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/parameter-input.cs.txt": "3cddfc55ad6786b59bc2d438877ff73096e91a8823502055752fd70326d666c3",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020"
+      },
+      "brief": {
+        "goal": "13 изученных UI проверок настроек внутри Game, с восстановлением исходных значений.",
+        "prepare_before_run": [
+          "Подготовить FastUiSession и SettingsAdapter до начала прогона.",
+          "Начинать из игрового мира, не главного меню; сохранить полный baseline."
+        ],
+        "run": [
+          "Готовым маршрутом открыть настройки, учитывая dev None над кнопкой.",
+          "Переключить и восстановить эффекты, музыку, вибрацию и FPS; проверить значения FPS.",
+          "Проверить значения графики и чувствительности, сменить и вернуть язык.",
+          "Открыть/закрыть промокод. Открыть и ОТМЕНИТЬ подтверждения новой игры и выхода.",
+          "Восстановить baseline, закрыть, открыть повторно и проверить сохранность значений; закрыть настройки."
+        ],
+        "success": "PASS_UI_SCOPE по значениям, окнам и восстановлению; новые красные ошибки 0.",
+        "stop": [
+          "Неполный baseline",
+          "Неизвестное окно или неверное подтверждение",
+          "Несовпадение ожидаемого значения",
+          "Новая неожиданная красная ошибка",
+          "Человек сказал стоп"
+        ],
+        "limits": [
+          "Не доказывает реальный звук, вибрацию и эффект графики.",
+          "Login и восстановление покупок в Editor не проверяются.",
+          "Удаление прогресса, активация промокода и внешние ссылки в профиль не входят.",
+          "При сбое честно вернуть невосстановленные значения, не объявлять cleanup успешным."
+        ]
+      }
+    },
+    "raft_navigation": {
+      "agent": "ocean-navigation",
+      "aliases": [
+        "обойти плот",
+        "движение по плоту",
+        "навигация по плоту"
+      ],
+      "source_ids": [
+        "ON-NAV-RAFT-001",
+        "ON-WORLD-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "projects/ocean-nomad/tools/raft-navigation/route-action.mjs#RaftRouteAction",
+      "implementation_files": [
+        "projects/ocean-nomad/tools/raft-navigation/raft-snapshot-fast.cs.txt",
+        "projects/ocean-nomad/tools/raft-navigation/plan_fast.py",
+        "projects/ocean-nomad/tools/raft-navigation/build_map.py",
+        "projects/ocean-nomad/tools/raft-navigation/route-action.mjs",
+        "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/error-monitor.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-NAV-RAFT-001": "2cbd2a8108b370e90f259074361661bd98913aef63ccb0d2444b65e35a2fff0e",
+        "ON-WORLD-RAFT-001": "def0ab6d2ed13f4b3650af5b8317e2d13d9da0bc5233222efa0905128ca3b4b5",
+        "ON-CONTROL-MOVE-LOOK-001": "d98598c8c6bc627dba79740fe71087b983d3378f0282f4cae45351036f0f9804",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "projects/ocean-nomad/tools/raft-navigation/raft-snapshot-fast.cs.txt": "b9e9bceb4219ce7734865be49af6885244c8dd8c7cbda8741ad1b117725b68fb",
+        "projects/ocean-nomad/tools/raft-navigation/plan_fast.py": "0746c11c364fb3b07f1f3de47a869ec13ec74100136006d5923500458213fc9d",
+        "projects/ocean-nomad/tools/raft-navigation/build_map.py": "af72e1cf1064124e6f031df0d80dc8ea11029e258c3a58494359f9597ab3d06f",
+        "projects/ocean-nomad/tools/raft-navigation/route-action.mjs": "8622a7306d3f1fdedcc9270b871bec444248f10e331f04594d24b1c6f492d3ea",
+        "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt": "ce9803e44df8503375f7e161e7b8627334a73edaddcf1a61ef9d92e6a41fe7cb",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020"
+      },
+      "brief": {
+        "goal": "Пройти выбранный маршрут по текущему настилу, обходя отверстия и препятствия.",
+        "prepare_before_run": [
+          "Свежий raft-snapshot-fast: текущие секции, препятствия, тело игрока и система координат.",
+          "Построить plan_fast без картинок. Границы безопасной опоры важнее прямой дистанции.",
+          "Прогреть RaftRouteAction до движения; один владелец ввода."
+        ],
+        "run": [
+          "Один BeginDrag, локальная коррекция по свежему CameraForward; аналог до 1, замедление на поворотах.",
+          "Контроллер проверяет опору и геометрию по кадрам; карта и капсула учитывают реальную матрицу столкновений игрока. Неколлидирующие ресурсы и косметика HUD не отменяют маршрут.",
+          "Отпустить ввод и подтвердить остановку по результату именно текущего request UUID."
+        ],
+        "success": "Маршрут текущего UUID завершён; ввод отпущен и опора сохранена. Отдельный маршрут не равен покрытию всего плота.",
+        "stop": [
+          "route_no_longer_clear, реальный dynamic_obstacle с данными коллайдера или изменившаяся геометрия",
+          "Потеря опоры/фокуса, фактическая блокировка или исчезновение джойстика",
+          "Новая красная ошибка",
+          "Нет движения или истёк бюджет не более 45 с",
+          "Стоп человека"
+        ],
+        "limits": [
+          "Поддержан плоский осевой настил; плавание, прыжки, лестницы и другие этажи требуют иных навыков.",
+          "После остановки не повторять старые координаты: получить свежую карту и новый маршрут.",
+          "plan_tour требует center секций; быстрый снимок отдаёт min/max, center выводится из них.",
+          "Специалист получает задачу маршрута, а не весь каталог квестов."
+        ]
+      }
+    },
+    "shark_defense": {
+      "agent": "ocean-combat",
+      "aliases": [
+        "отбить акулу",
+        "отогнать акулу",
+        "акула атакует"
+      ],
+      "source_ids": [
+        "ON-SAFETY-SHARK-DEFENSE-001",
+        "ON-COMBAT-SHARK-MELEE-001",
+        "ON-COMBAT-FIREARM-SHOT-001",
+        "ON-NAV-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "projects/ocean-nomad/tools/shark-defense/install.mjs#defendCurrentAttack",
+      "implementation_files": [
+        "projects/ocean-nomad/tools/shark-defense/install.mjs",
+        "projects/ocean-nomad/tools/shark-defense/reactor.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/plan.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/outcome.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/close-ui.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/aim-enemy.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/input-motor.cs.txt",
+        "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt",
+        "tools/unity-ui/error-monitor.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-SAFETY-SHARK-DEFENSE-001": "d3c191cb507f81e28a40661d99819d33a1875d4cf7936951509ec74e023dd933",
+        "ON-COMBAT-SHARK-MELEE-001": "7487121a1accfae7ac9a844f8708651594eb813f057270a87fd7b5bb203bbf0f",
+        "ON-NAV-RAFT-001": "2cbd2a8108b370e90f259074361661bd98913aef63ccb0d2444b65e35a2fff0e",
+        "ON-CONTROL-MOVE-LOOK-001": "d98598c8c6bc627dba79740fe71087b983d3378f0282f4cae45351036f0f9804",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "projects/ocean-nomad/tools/shark-defense/install.mjs": "278e3229b7812c660787828ab83b2073b6f5c4bf3c453749ca7fbab19e211371",
+        "projects/ocean-nomad/tools/shark-defense/reactor.cs.txt": "2afaf8078d3abee3dd3d5e9028eda3118d56f652b35a5ee5bd191d5ade6c77e3",
+        "projects/ocean-nomad/tools/shark-defense/plan.cs.txt": "151742753d0bda033120e47cc983992f6f83dbe34815b36e0687ee181251cd5f",
+        "projects/ocean-nomad/tools/shark-defense/outcome.cs.txt": "0a2b4a074a3412216af3541e81880c07f66ebfb93b9b5cac0ab62330b981e1c6",
+        "projects/ocean-nomad/tools/shark-defense/close-ui.cs.txt": "6bd44d50862cee412c98505dfcac28cbf2dd7742474e056cb223867fb3e84842",
+        "projects/ocean-nomad/tools/fast-spatial/aim-enemy.cs.txt": "dd7b7389589814239630af5f4ba2003fb7f646bad361eba9ef370dd39feefc76",
+        "projects/ocean-nomad/tools/fast-spatial/input-motor.cs.txt": "3b10dba1897a46349786509c79bbb43272aa7813c0513e0bf51a773966cd1f7b",
+        "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt": "ce9803e44df8503375f7e161e7b8627334a73edaddcf1a61ef9d92e6a41fe7cb",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
+        "ON-COMBAT-FIREARM-SHOT-001": "5339be2599378fa3c75293f1924c534ccf5a05334b4ee57c718d63b599cc767e"
+      },
+      "brief": {
+        "goal": "На нападение определить тип оружия: ranged наводится и стреляет с места, melee использует прежний подход; подтвердить отступление.",
+        "prepare_before_run": [
+          "Прогреть семь jobs prepareDefense; для обычного дежурства require_melee=false. True только по явному заданию обучения ближнему бою. Проверены Hook и Rifle с activity Pistol.",
+          "Спящий обработчик хранит подписку, не старые координаты; пробуждается по сигналу/логу с подтверждением живого флага.",
+          "Вызов нападения и запуск shark_attack являются отдельной подготовкой: не повторять уже активный квест. Не начинать новую игру без применимого задания человека."
+        ],
+        "run": [
+          "Корректно закрыть знакомые меню/чит-панель, получить актуальную акулу и атакуемую секцию.",
+          "Ranged: начать с Look без маршрута; свободная линия огня → UI use. Перестроение позиции только при подтверждённом solid перед целью, затем новое наведение. Melee: прежний безопасный подход.",
+          "Rifle использует HitScanShooter; цель вне дальности ожидается на месте. Неизвестная цель/буфер/источник останавливают, не разрешают движение. Успех по свежим HP damage и retreat."
+        ],
+        "success": "Свежие урон HP и retreat. Сам подход, исчезновение флага, no_current_attack и отсутствие события не являются успехом.",
+        "stop": [
+          "no_reachable_attack_position или неподдержанная опора",
+          "Неизвестный UI/экипировка/источник",
+          "Новая неожиданная красная ошибка",
+          "Нет прогресса или бюджет 45 с",
+          "Стоп человека"
+        ],
+        "limits": [
+          "Старое подтверждение успеха не гарантирует успех на другом плоту.",
+          "Копьё, другие пушки и перезарядка live не проверены. Новая stationary/cover ветка проверена 12 решениями и компиляцией; новый live бой ещё не подтверждён.",
+          "Полное живое прерывание произвольного теста и его возобновление не подтверждены.",
+          "При no_current_attack не объявлять атаку отброшенной и не перезапускать активный квест вслепую."
+        ]
+      }
+    },
+    "intro": {
+      "agent": "ocean-quests",
+      "aliases": [
+        "интро",
+        "сюжетное вступление"
+      ],
+      "source_ids": [
+        "ON-QUEST-INTRO-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "tools/agent-runtime/onboarding-runner.mjs#runPreparedQuest",
+      "preparation_entry_point": "tools/agent-runtime/onboarding-runner.mjs#prepareIntroMission",
+      "implementation_files": [
+        "tools/agent-runtime/onboarding-runner.mjs",
+        "tools/agent-runtime/quest-bridge.mjs",
+        "tools/agent-runtime/quest-observer.cs.txt",
+        "tools/agent-runtime/known-quest-ui.cs.txt",
+        "tools/agent-runtime/select-quest-command.cs.txt",
+        "tools/agent-runtime/mission-pool.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/error-monitor.mjs",
+        "tools/agent-runtime/catalog.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-QUEST-INTRO-001": "fa96b73dc1ed1b5c398ea0630189d72aeaed9d3a92872d71d2e4e2c620c4c112",
+        "ON-QUEST-START-001": "37840a0e7f12219b32f8a6dd6f63110d700bfa5db5212bcd0f45e5a1648a509b",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "tools/agent-runtime/onboarding-runner.mjs": "be52ad9c30e8b4835ed83b21e94a09765315e5cd39c2e2633a74e5983ee548dc",
+        "tools/agent-runtime/quest-bridge.mjs": "afb4568e268ad9ee793048157c9be6f4dc998237b7f1b18b7e5ece356d166712",
+        "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
+        "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
+        "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
+        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
+        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+      },
+      "brief": {
+        "goal": "Пропустить сюжетные страницы и получить свежий Done intro.",
+        "implementation_status": "Assisted live run 27.10: Finish clicked after human prompt; target-change fallback fixed and offline tested; autonomous repeat pending.",
+        "prepare_before_run": [
+          "One project-guarded idle session and Game scene.",
+          "Call the named preparation factory before timing; compile exact commands, establish parameter bindings and passive observation.",
+          "Runtime readiness requires an actual handler for current Unity epoch and reviewed packet revision, not a text cache."
+        ],
+        "run": [
+          "Quests → intro, только если миссия не активна; закрыть чит-панель.",
+          "Next по текущей странице; обязательно Finish / Завершить на последней в той же нижней области. При исчезнувшей Next без отправленного ввода сразу выбрать актуальную Finish; без перезапуска миссии.",
+          "При известном перекрытии ограниченно повторить нажатие; дождаться свежего Done до следующей миссии."
+        ],
+        "success": "Fresh current-instance Done, all required steps complete; cleanup and error monitor confirmed. For shark also fresh repelled combat outcome.",
+        "stop": [
+          "User stop",
+          "Unexpected red error, unknown UI/input outcome or source change",
+          "Bounded retry/timeout exhausted; no blind replay of sent Create",
+          "Unsafe movement, missing Hook or unreachable shark"
+        ],
+        "limits": [
+          "Do not infer this wrapper live-tested from an older successful episode.",
+          "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
+          "Detailed report stays local; coordinator gets compact result."
+        ],
+        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "group": "onboarding"
+      }
+    },
+    "control": {
+      "agent": "ocean-quests",
+      "aliases": [
+        "обучение управлению",
+        "миссия управления"
+      ],
+      "source_ids": [
+        "ON-QUEST-CONTROL-001",
+        "ON-QUEST-START-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "tools/agent-runtime/onboarding-runner.mjs#runPreparedQuest",
+      "preparation_entry_point": "tools/agent-runtime/onboarding-runner.mjs#prepareControlMission",
+      "implementation_files": [
+        "tools/agent-runtime/onboarding-runner.mjs",
+        "tools/agent-runtime/quest-bridge.mjs",
+        "tools/agent-runtime/quest-observer.cs.txt",
+        "tools/agent-runtime/known-quest-ui.cs.txt",
+        "tools/agent-runtime/select-quest-command.cs.txt",
+        "tools/agent-runtime/mission-pool.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/error-monitor.mjs",
+        "tools/agent-runtime/control-gesture.cs.txt",
+        "tools/agent-runtime/catalog.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-QUEST-CONTROL-001": "119422fe4418220b0efb6a7ed2977c208fc17d1fb3cadd8bf2c42529706a5cd7",
+        "ON-QUEST-START-001": "37840a0e7f12219b32f8a6dd6f63110d700bfa5db5212bcd0f45e5a1648a509b",
+        "ON-CONTROL-MOVE-LOOK-001": "d98598c8c6bc627dba79740fe71087b983d3378f0282f4cae45351036f0f9804",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "tools/agent-runtime/onboarding-runner.mjs": "be52ad9c30e8b4835ed83b21e94a09765315e5cd39c2e2633a74e5983ee548dc",
+        "tools/agent-runtime/quest-bridge.mjs": "afb4568e268ad9ee793048157c9be6f4dc998237b7f1b18b7e5ece356d166712",
+        "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
+        "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
+        "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
+        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
+        "tools/agent-runtime/control-gesture.cs.txt": "bdde2f7b3d0c7de5076d563d65f9ab8cbb7f3046776e74cf8d0ba4a32affb94b",
+        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+      },
+      "brief": {
+        "goal": "Завершить movement и camera обычными короткими жестами.",
+        "implementation_status": "Prepared wrapper live PASS 27.10; fresh quest_done_event; speed and sequence human-approved, scoped to this mission.",
+        "prepare_before_run": [
+          "One project-guarded idle session and Game scene.",
+          "Call the named preparation factory before timing; compile exact commands, establish parameter bindings and passive observation.",
+          "Runtime readiness requires an actual handler for current Unity epoch and reviewed packet revision, not a text cache."
+        ],
+        "run": [
+          "Quests → control при отсутствии активной миссии, закрыть панель и известные диалоги.",
+          "Короткое движение в безопасную сторону по настилу, затем короткий Look.",
+          "Нужны реальные смещение/поворот и свежий Done с обоими шагами."
+        ],
+        "success": "Fresh current-instance Done, all required steps complete; cleanup and error monitor confirmed. For shark also fresh repelled combat outcome.",
+        "stop": [
+          "User stop",
+          "Unexpected red error, unknown UI/input outcome or source change",
+          "Bounded retry/timeout exhausted; no blind replay of sent Create",
+          "Unsafe movement, missing Hook or unreachable shark"
+        ],
+        "limits": [
+          "Do not infer this wrapper live-tested from an older successful episode.",
+          "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
+          "Detailed report stays local; coordinator gets compact result."
+        ],
+        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "group": "onboarding"
+      }
+    },
+    "wooden_hook": {
+      "agent": "ocean-quests",
+      "aliases": [
+        "крафт крюка",
+        "изготовить деревянный крюк"
+      ],
+      "source_ids": [
+        "ON-QUEST-WOODEN-HOOK-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "tools/agent-runtime/onboarding-runner.mjs#runPreparedQuest",
+      "preparation_entry_point": "tools/agent-runtime/onboarding-runner.mjs#prepareWoodenHookMission",
+      "implementation_files": [
+        "tools/agent-runtime/onboarding-runner.mjs",
+        "tools/agent-runtime/quest-bridge.mjs",
+        "tools/agent-runtime/quest-observer.cs.txt",
+        "tools/agent-runtime/known-quest-ui.cs.txt",
+        "tools/agent-runtime/select-quest-command.cs.txt",
+        "tools/agent-runtime/mission-pool.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/error-monitor.mjs",
+        "tools/agent-runtime/catalog.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-QUEST-WOODEN-HOOK-001": "166e88663086e30d8a85941133a9bbc0a8524860c17e2ce5cc60fb5b4de30751",
+        "ON-QUEST-START-001": "37840a0e7f12219b32f8a6dd6f63110d700bfa5db5212bcd0f45e5a1648a509b",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "tools/agent-runtime/onboarding-runner.mjs": "be52ad9c30e8b4835ed83b21e94a09765315e5cd39c2e2633a74e5983ee548dc",
+        "tools/agent-runtime/quest-bridge.mjs": "afb4568e268ad9ee793048157c9be6f4dc998237b7f1b18b7e5ece356d166712",
+        "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
+        "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
+        "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
+        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
+        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+      },
+      "brief": {
+        "goal": "Изготовить WoodenHook и получить свежий Done wooden_hook.",
+        "implementation_status": "Prepared wrapper live PASS 27.10; fresh quest_done_event; speed and sequence human-approved, scoped to this mission.",
+        "prepare_before_run": [
+          "One project-guarded idle session and Game scene.",
+          "Call the named preparation factory before timing; compile exact commands, establish parameter bindings and passive observation.",
+          "Runtime readiness requires an actual handler for current Unity epoch and reviewed packet revision, not a text cache."
+        ],
+        "run": [
+          "Quests → wooden_hook, закрыть панель и Продолжить.",
+          "Открыть Craft. Квест фокусирует рецепт; нажать обычную Create один раз, закрыть Craft.",
+          "Дождаться свежего Done 1/1; не исследовать рецепт заново и не включать freecraft."
+        ],
+        "success": "Fresh current-instance Done, all required steps complete; cleanup and error monitor confirmed. For shark also fresh repelled combat outcome.",
+        "stop": [
+          "User stop",
+          "Unexpected red error, unknown UI/input outcome or source change",
+          "Bounded retry/timeout exhausted; no blind replay of sent Create",
+          "Unsafe movement, missing Hook or unreachable shark"
+        ],
+        "limits": [
+          "Do not infer this wrapper live-tested from an older successful episode.",
+          "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
+          "Detailed report stays local; coordinator gets compact result."
+        ],
+        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "group": "onboarding"
+      }
+    },
+    "shark_attack": {
+      "agent": "ocean-combat",
+      "aliases": [
+        "миссия с акулой"
+      ],
+      "source_ids": [
+        "ON-QUEST-SHARK-ATTACK-001",
+        "ON-QUEST-START-001",
+        "ON-COMBAT-SHARK-MELEE-001",
+        "ON-SAFETY-SHARK-DEFENSE-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "entry_point": "tools/agent-runtime/onboarding-runner.mjs#runPreparedQuest",
+      "preparation_entry_point": "tools/agent-runtime/onboarding-runner.mjs#prepareSharkAttackMission",
+      "implementation_files": [
+        "tools/agent-runtime/onboarding-runner.mjs",
+        "tools/agent-runtime/quest-bridge.mjs",
+        "tools/agent-runtime/quest-observer.cs.txt",
+        "tools/agent-runtime/known-quest-ui.cs.txt",
+        "tools/agent-runtime/select-quest-command.cs.txt",
+        "tools/agent-runtime/mission-pool.mjs",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
+        "tools/unity-ui/session.mjs",
+        "tools/unity-ui/error-monitor.mjs",
+        "tools/agent-runtime/defense-command.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/install.mjs",
+        "projects/ocean-nomad/tools/shark-defense/reactor.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/plan.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/outcome.cs.txt",
+        "projects/ocean-nomad/tools/shark-defense/close-ui.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/aim-enemy.cs.txt",
+        "projects/ocean-nomad/tools/fast-spatial/input-motor.cs.txt",
+        "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt",
+        "tools/agent-runtime/catalog.mjs"
+      ],
+      "reviewed_sha256": {
+        "ON-QUEST-SHARK-ATTACK-001": "51bce1630dcc450e5eb60f375904c33db6985f2d8c7eb80bc6921de29fa9c907",
+        "ON-QUEST-START-001": "37840a0e7f12219b32f8a6dd6f63110d700bfa5db5212bcd0f45e5a1648a509b",
+        "ON-COMBAT-SHARK-MELEE-001": "7487121a1accfae7ac9a844f8708651594eb813f057270a87fd7b5bb203bbf0f",
+        "ON-SAFETY-SHARK-DEFENSE-001": "d3c191cb507f81e28a40661d99819d33a1875d4cf7936951509ec74e023dd933",
+        "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
+        "tools/agent-runtime/onboarding-runner.mjs": "be52ad9c30e8b4835ed83b21e94a09765315e5cd39c2e2633a74e5983ee548dc",
+        "tools/agent-runtime/quest-bridge.mjs": "afb4568e268ad9ee793048157c9be6f4dc998237b7f1b18b7e5ece356d166712",
+        "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
+        "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
+        "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
+        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
+        "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
+        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
+        "tools/agent-runtime/defense-command.cs.txt": "d9249866285971088d44045c5aabffdd3cab3abb72faa5f43d21d65df7de2c2c",
+        "projects/ocean-nomad/tools/shark-defense/install.mjs": "278e3229b7812c660787828ab83b2073b6f5c4bf3c453749ca7fbab19e211371",
+        "projects/ocean-nomad/tools/shark-defense/reactor.cs.txt": "2afaf8078d3abee3dd3d5e9028eda3118d56f652b35a5ee5bd191d5ade6c77e3",
+        "projects/ocean-nomad/tools/shark-defense/plan.cs.txt": "151742753d0bda033120e47cc983992f6f83dbe34815b36e0687ee181251cd5f",
+        "projects/ocean-nomad/tools/shark-defense/outcome.cs.txt": "0a2b4a074a3412216af3541e81880c07f66ebfb93b9b5cac0ab62330b981e1c6",
+        "projects/ocean-nomad/tools/shark-defense/close-ui.cs.txt": "6bd44d50862cee412c98505dfcac28cbf2dd7742474e056cb223867fb3e84842",
+        "projects/ocean-nomad/tools/fast-spatial/aim-enemy.cs.txt": "dd7b7389589814239630af5f4ba2003fb7f646bad361eba9ef370dd39feefc76",
+        "projects/ocean-nomad/tools/fast-spatial/input-motor.cs.txt": "3b10dba1897a46349786509c79bbb43272aa7813c0513e0bf51a773966cd1f7b",
+        "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt": "ce9803e44df8503375f7e161e7b8627334a73edaddcf1a61ef9d92e6a41fe7cb",
+        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+      },
+      "brief": {
+        "goal": "Завершить полную миссию shark_attack, не только подход или вызов нападения.",
+        "implementation_status": "New prepared wrapper: offline checks only; live current-Unity preparation and speed approval pending. Earlier gameplay evidence is separate.",
+        "prepare_before_run": [
+          "One project-guarded idle session and Game scene.",
+          "Call the named preparation factory before timing; compile exact commands, establish parameter bindings and passive observation.",
+          "Runtime readiness requires an actual handler for current Unity epoch and reviewed packet revision, not a text cache."
+        ],
+        "run": [
+          "Проверенный Hook и заранее подготовленные семь jobs защиты.",
+          "Quests → shark_attack только если квест не активен. Закрыть чит-панель и известный диалог.",
+          "Включить прежнюю защиту: подход → наведение → удары до retreat. Требовать также свежий Done квеста.",
+          "Опциональный dev-повтор атаки только с текущим allowAttackCheat=true и максимум один раз; без новой игры."
+        ],
+        "success": "Fresh current-instance Done, all required steps complete; cleanup and error monitor confirmed. For shark also fresh repelled combat outcome.",
+        "stop": [
+          "User stop",
+          "Unexpected red error, unknown UI/input outcome or source change",
+          "Bounded retry/timeout exhausted; no blind replay of sent Create",
+          "Unsafe movement, missing Hook or unreachable shark"
+        ],
+        "limits": [
+          "Do not infer this wrapper live-tested from an older successful episode.",
+          "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
+          "Detailed report stays local; coordinator gets compact result."
+        ],
+        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "group": "onboarding"
+      }
+    }
+  }
+}

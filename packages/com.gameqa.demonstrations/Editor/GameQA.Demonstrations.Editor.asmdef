@@ -1,0 +1,16 @@
+{
+  "name": "GameQA.Demonstrations.Editor",
+  "rootNamespace": "QaDemonstrations",
+  "references": [
+    "GameQA.Demonstrations",
+    "Unity.Recorder.Editor",
+    "Unity.Recorder",
+    "Unity.Recorder.Base"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true,
+  "overrideReferences": false,
+  "noEngineReferences": false
+}

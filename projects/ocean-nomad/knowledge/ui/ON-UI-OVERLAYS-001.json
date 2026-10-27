@@ -1,0 +1,78 @@
+{
+  "id": "ON-UI-OVERLAYS-001",
+  "kind": "approved_ui_recognition",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0",
+  "runtime": "UnityEditor",
+  "source": [
+    "human guidance: press Continue, 2 or 3 pages before Premium",
+    "runtime screenshots and EventSystem clicks, 2026-10-22"
+  ],
+  "status": "observed_and_approved; integrated classifier prepared for next run",
+  "container": {
+    "window_type": "MainScreen.Premium.PremiumWindowNew",
+    "root": "CanvasOnboarding/PremiumNewVariants_16x9_Android",
+    "warning": "Один тип окна содержит вступление и само предложение. Тип окна и наличие скрытых цен не определяют текущую страницу."
+  },
+  "pages": [
+    {
+      "id": "intro_build",
+      "title": "ПОСТРОЙ ПЛОТ МЕЧТЫ!",
+      "required_button_label": "ПРОДОЛЖИТЬ",
+      "target_suffix": "Panel/Right/Bottom/PremiumButton",
+      "action": "skip_intro_build",
+      "observed": true
+    },
+    {
+      "id": "intro_survive",
+      "title": "ВЫЖИВАЙ НА ПЛОТУ!",
+      "required_button_label": "ПРОДОЛЖИТЬ",
+      "target_suffix": "Panel/Right/Bottom/PremiumButton",
+      "action": "skip_intro_survive",
+      "observed": true
+    },
+    {
+      "id": "offer",
+      "title": "НАСЛАЖДАЙСЯ ИГРОЙ И ПОЛУЧАЙ БОНУСЫ",
+      "target_suffix": "Panel/CloseButton",
+      "action": "close_premium",
+      "observed": true
+    }
+  ],
+  "recognition": {
+    "title_normalization": "Strip rich text tags; normalize whitespace; exact known heading.",
+    "current_geometry": "Resolve current button; EventSystem raycast, no saved coordinates.",
+    "before_input": "Recheck intro title and Continue label on the actual game frame.",
+    "count": "Do not depend on a fixed number of pages. Only these two intro titles are learned; unknown third title returns control.",
+    "prices": "Hidden active price/FreeTrial labels observed during informational page. Do not use all active texts as proof of displayed purchase UI.",
+    "expected_after_continue": "A different learned page or the offer. Never repeat an acknowledged click while awaiting transition."
+  },
+  "controller": "projects/ocean-nomad/tools/fast-ui/main-menu.mjs",
+  "reusable_classifier": "projects/ocean-nomad/tools/fast-ui/overlays.mjs",
+  "verification": {
+    "manual_MCP_recovery": "Two Continue clicks and Premium cross reached the main menu; human guidance supplied.",
+    "main_menu_controller_tests": 11,
+    "new_integrated_live_replay": "NOT_RUN",
+    "new_speed_measurement": "NOT_RUN",
+    "preparation": "11 guarded commands compiled with input disabled; current MainScreenWindow2 and zero errors observed",
+    "prepared_at": "2026-10-22T12:56:51.060Z"
+  },
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "episode": "2026-10-22T12-44-29-886Z",
+    "files": [
+      "report.json",
+      "exit-resume.json",
+      "wizard-resume.json",
+      "visible-onboarding-controls.json"
+    ]
+  },
+  "editor_levelplay_interstitial": {
+    "source": "Человек показал заглушку23.10; исходник InterstitialPrefab.OnGUI; агент закрыл Close и прочитал m_Preview=false",
+    "identity": "Unity LevelPlay / Interstitial Ad; активный InterstitialPrefab.m_Preview",
+    "control": "Close, IMGUI buttonRect(Screen.width*.75, Screen.height*.05, Screen.width*.2, Screen.height*.05)",
+    "action": "Обычный клик по текущему rect, отдельные down/up; не вызывать HideAd напрямую",
+    "coverage": "Не входит в AbstractWindowPrefab/UGUI raycast. Снимок только Main Camera может не показывать IMGUI и не является полным экраном.",
+    "lesson": "При отсутствии эффекта клика сначала проверить верхнее окно/перекрытие; не считать проблему автоматически ошибкой координат или фокуса."
+  }
+}

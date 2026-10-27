@@ -1,0 +1,156 @@
+// Warm event-driven supervisor. Idle stores bindings/counters, never world target coordinates.
+const string key="QaAgent.SharkDefense.v1";
+__ERROR_WATCH_SETUP__
+var prior=System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if(prior!=null)((System.Action)prior["dispose"])();
+var state=new System.Collections.Generic.Dictionary<string,object>{{"phase","sleeping"},{"busy",false},{"armed",false},{"outcome","none"},{"task",null},{"interrupted_task",null},{"resume_ready",false}};
+System.AppDomain.CurrentDomain.SetData(key,state);
+var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic;
+System.Func<object,string,object> field=(o,name)=>{if(o==null)return null;for(var t=o.GetType();t!=null;t=t.BaseType){var f=t.GetField(name,flags|System.Reflection.BindingFlags.DeclaredOnly);if(f!=null)return f.GetValue(o);}return null;};
+System.Func<object,string> status=o=>o==null?"missing_result":(string)o.GetType().GetProperty("status").GetValue(o,null);
+System.Func<string,System.Collections.Generic.Dictionary<string,object>> data=k=>System.AppDomain.CurrentDomain.GetData(k) as System.Collections.Generic.Dictionary<string,object>;
+System.Func<string> phase=()=>(string)state["phase"];
+var events=new System.Collections.Generic.Queue<object>();
+System.Action<string,object> record=(kind,detail)=>{if(events.Count>=64)events.Dequeue();events.Enqueue(new{kind=kind,frame=UnityEngine.Time.frameCount,utc=System.DateTime.UtcNow.ToString("o"),detail=detail});};
+int pending=0,lastFrame=-1;bool disposed=false,ownSession=false,ownMonitor=false,previousBackground=false,retreatSeen=false,timeoutSeen=false,deathSeen=false;
+double lastBind=0,began=0,nextAction=0,endedAt=-1;float hpAtWake=0,lastHp=0;int damageEvents=0,attackEpoch=0,aimAttempts=0,uiAttempts=0,positionAttempts=0,recoveryAttempts=0,rangedRepositions=0;string reason="",trigger="",weaponUid="",weaponFamily="";bool staged=false,rangedBlocked=false;
+Enemy.BrutalShark.SharkAISystem bound=null,shark=null;
+Survival.Views.Movement movement=null;Survival.Views.UIView.UIHudControlsPanel hud=null;
+System.IDisposable attackSub=null,statisticsSub=null;UnityEngine.Events.UnityAction<float> onDamage=null;UnityEngine.Events.UnityAction onDeath=null;
+System.Action cancelOwned=()=>{UnityEditor.SessionState.SetInt("QaAgent.SharkCheat.generation",UnityEditor.SessionState.GetInt("QaAgent.SharkCheat.generation",0)+1);foreach(var k in new[]{"QaAgent.SharkRoute.v1","QaAgent.SharkAim.v1","QaAgent.SharkMotor.v1"}){var d=data(k);if(d!=null&&d.ContainsKey("finished")&&!(bool)d["finished"])((System.Action)d["cancel"])();}};
+System.Action cancelMain=()=>{UnityEditor.SessionState.SetInt("QaAgent.FastUi.sequence",UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence",0)+1);foreach(var k in new[]{"QaAgent.RaftRoute.v1","QaAgent.AimEnemy.v1","QaAgent.AimHook.v1","QaAgent.InputMotor.v1"}){var d=data(k);if(d!=null&&d.ContainsKey("finished")&&!(bool)d["finished"]&&d.ContainsKey("cancel"))((System.Action)d["cancel"])();}};
+System.Action releaseSession=()=>{if(ownSession){UnityEditor.SessionState.SetBool("QaAgent.FastUi.active",false);UnityEngine.Application.runInBackground=previousBackground;ownSession=false;}if(ownMonitor){var w=data("QaAgent.ErrorWatch.v1");if(w!=null)lock(w["gate"])w["armed"]=false;ownMonitor=false;}};
+System.Action detachCombat=()=>{if(statisticsSub!=null){statisticsSub.Dispose();statisticsSub=null;}if(shark!=null){if(onDamage!=null)shark.DamageEventProp.RemoveListener(onDamage);if(onDeath!=null)shark.DeathEventProp.RemoveListener(onDeath);}onDamage=null;onDeath=null;};
+System.Action<string> block=why=>{reason=why;cancelOwned();detachCombat();releaseSession();state["busy"]=false;state["phase"]="needs_review";state["outcome"]=why;state["resume_ready"]=false;record("stopped",why);};
+System.Action<string> resolve=outcome=>{cancelOwned();detachCombat();releaseSession();state["busy"]=false;state["phase"]="sleeping";state["outcome"]=outcome;state["resume_ready"]=state["interrupted_task"]!=null;record("resolved",new{outcome=outcome,damage_events=damageEvents,hp_start=hpAtWake,hp_end=lastHp,seconds=UnityEditor.EditorApplication.timeSinceStartup-began});shark=null;movement=null;hud=null;};
+System.Func<string,object> call=name=>((System.Func<object>)System.AppDomain.CurrentDomain.GetData("QaAgent.SharkWarm."+name))();
+System.Func<string,bool> done=name=>{var d=data(name);return d!=null&&d.ContainsKey("finished")&&(bool)d["finished"];};
+System.Action startAim=()=>{UnityEditor.SessionState.SetString("QaAgent.SharkAim.v1.mode","aim");UnityEditor.SessionState.SetInt("QaAgent.SharkAim.v1.target",shark.gameObject.GetInstanceID());var r=call("aim");if(status(r)!="running"){block("aim_"+status(r));return;}state["phase"]="aiming";};
+System.Func<float> weaponRange=()=>{var callback=field(hud.ActionButtons[0],"_pressExtended") as System.Delegate;var activity=field(callback==null?null:callback.Target,"_activityController") as Survival.Activities.ActivityController;if(activity==null)return 0;var heldProp=activity.GetType().GetProperty("HeldItem",flags);var held=heldProp==null?null:heldProp.GetValue(activity,null) as string;var primary=activity.CurrentActivity;weaponUid=held;weaponFamily=primary is Survival.Activities.LongrangeWeapon?"ranged":"melee";var db=field(primary,"_weaponModelDatabase") as Survival.Databases.IDatabase<Survival.Weapon.Models.WeaponModel>;Survival.Weapon.Models.WeaponModel model=null;if(db==null||string.IsNullOrEmpty(held)||!db.TryGet(held,out model))return 0;return model.Range;};
+// ENGAGEMENT_POLICY_BEGIN
+System.Func<string,string,string> engagement=(family,sight)=>{
+    if(family=="melee")return "melee";
+    if(family!="ranged")return "stop";
+    if(sight=="start"||sight=="not_aligned")return "aim";
+    if(sight=="clear")return "shoot";
+    if(sight=="blocked")return "reposition";
+    if(sight=="out_of_range")return "wait";
+    return "stop";
+};
+// ENGAGEMENT_POLICY_END
+var rangedHits=new UnityEngine.RaycastHit[30];
+System.Func<string> rangedSight=()=>{
+    var camera=UnityEngine.Camera.main;var range=weaponRange();if(camera==null||range<=0||shark==null)return "source_unknown";
+    var ray=camera.ScreenPointToRay(new UnityEngine.Vector3(UnityEngine.Screen.width*.5f,UnityEngine.Screen.height*.5f,0));
+    var count=Survival.Weapon.HitScanShooter.CollectHits(ray,range,rangedHits);
+    if(count>=rangedHits.Length)return "query_full";
+    for(int n=0;n<count;n++)if(rangedHits[n].collider!=null&&rangedHits[n].collider.gameObject.layer==UnityEngine.LayerMask.NameToLayer("Enemy"))return rangedHits[n].collider.GetComponentInParent<Enemy.BrutalShark.SharkAISystem>()==shark?"clear":"wrong_enemy";
+    var point=shark.HitPointTransform==null?shark.transform.position:shark.HitPointTransform.position;
+    var distance=UnityEngine.Vector3.Distance(ray.origin,point);
+    if(Survival.Weapon.HitScanShooter.IsRayBlockedBySolid(ray,UnityEngine.Mathf.Min(range,distance)))return "blocked";
+    return distance>range+.25f?"out_of_range":"not_aligned";
+};
+System.Func<bool> canHit=()=>{var camera=UnityEngine.Camera.main;var range=weaponRange();if(camera==null||range<=0)return false;var hits=new UnityEngine.RaycastHit[5];int count=UnityEngine.Physics.SphereCastNonAlloc(camera.ScreenPointToRay(new UnityEngine.Vector3(UnityEngine.Screen.width*.5f,UnityEngine.Screen.height*.5f,0)),.33f,hits,range);for(int n=0;n<count;n++)if(hits[n].collider!=null&&hits[n].collider.gameObject.layer==UnityEngine.LayerMask.NameToLayer("Enemy"))return hits[n].collider.GetComponentInParent<Enemy.BrutalShark.SharkAISystem>()==shark;return false;};
+System.Action planApproach=()=>{
+    var range=weaponRange();if(range<=0){block("no_equipped_weapon");return;}
+    if(UnityEditor.SessionState.GetBool("QaAgent.SharkDefense.require_melee",false)&&weaponFamily!="melee"){block("expected_melee_weapon");return;}
+    if(engagement(weaponFamily,rangedBlocked?"blocked":"start")=="aim"){
+        var cc=movement.GetComponent<UnityEngine.CharacterController>();if(cc==null||!cc.isGrounded){block("ranged_not_grounded");return;}
+        record("ranged_stationary",new{weapon_uid=weaponUid,range=range});startAim();return;
+    }
+    var planner=(System.Func<object[],object[]>)System.AppDomain.CurrentDomain.GetData("QaAgent.SharkWarm.plan");var result=planner(new object[]{movement,shark,range,null,weaponFamily=="ranged"});bool staging=false;
+    if((string)result[0]=="not_grounded_yet"&&++positionAttempts<=12){state["phase"]="waiting_position";nextAction=UnityEditor.EditorApplication.timeSinceStartup+.05;return;}
+    if((string)result[0]=="recovery_needed"){
+        if(++recoveryAttempts>6){block("recovery_not_converging");return;}var target=(float[])result[1];var delta=new UnityEngine.Vector2(target[0]-movement.Position.x,target[1]-movement.Position.z);var heading=movement.CameraForward;var length=UnityEngine.Mathf.Sqrt(heading.x*heading.x+heading.z*heading.z);if(length<.01f||delta.magnitude<.002f){block("recovery_direction_unknown");return;}float fx=heading.x/length,fz=heading.z/length;
+        UnityEditor.SessionState.SetString("QaAgent.SharkMotor.v1.mode","run");UnityEditor.SessionState.SetString("QaAgent.SharkMotor.v1.action","move");UnityEditor.SessionState.SetFloat("QaAgent.SharkMotor.v1.seconds",UnityEngine.Mathf.Clamp(delta.magnitude/(3*.25f)*.65f,.05f,.16f));UnityEditor.SessionState.SetFloat("QaAgent.SharkMotor.v1.move_x",(delta.x*fz-delta.y*fx)/delta.magnitude*.25f);UnityEditor.SessionState.SetFloat("QaAgent.SharkMotor.v1.move_y",(delta.x*fx+delta.y*fz)/delta.magnitude*.25f);UnityEditor.SessionState.SetBool("QaAgent.SharkMotor.v1.require_attack",true);var recovery=call("motor");if(status(recovery)!="running"){block("recovery_"+status(recovery));return;}record("support_reserve_recovery",new{target=target,attempt=recoveryAttempts});state["phase"]="recovering";return;
+    }
+    if(weaponFamily!="ranged"&&(string)result[0]=="no_reachable_attack_position"&&!staged){
+        // The attack alert can precede the shark's final approach to the bitten foundation.
+        // Move on supported deck towards that live foundation; never chase its distant pivot.
+        staged=true;var attack=shark.GetComponent<Enemy.BrutalShark.ExecutorRealisations.BrutalSharkAttackRaft>();var recipient=field(attack,"_damageRecipient") as Survival.Ai.Components.Behaviour.DamageRecipients.RaftDamageRecipient;
+        if(recipient!=null&&recipient.Building!=null&&recipient.Building.Object!=null){var p=recipient.Building.Object.transform.position;result=planner(new object[]{movement,null,range,new[]{p.x,p.z}});staging=(string)result[0]=="planned";}
+    }
+    if((string)result[0]!="planned"){
+        if((string)result[0]=="no_reachable_attack_position"&&++positionAttempts<=20){state["phase"]="waiting_position";nextAction=UnityEditor.EditorApplication.timeSinceStartup+.25;return;}
+        block((string)result[0]);return;
+    }
+    System.AppDomain.CurrentDomain.SetData("QaAgent.SharkRoute.protocol",result[1]);UnityEditor.SessionState.SetString("QaAgent.SharkRoute.v1.request","shark-"+attackEpoch);UnityEditor.SessionState.SetString("QaAgent.SharkRoute.v1.mode","run");var r=call("route");if(status(r)!="running"){block("approach_"+status(r));return;}
+    record(weaponFamily=="ranged"?"ranged_reposition":staging?"staging_approach":"approach",new{shark_id=shark.GetInstanceID(),shark_position=new[]{shark.transform.position.x,shark.transform.position.y,shark.transform.position.z},weapon_uid=weaponUid,weapon_family=weaponFamily,range=range,target=result[2]});state["phase"]=weaponFamily=="ranged"?"ranged_reposition":staging?"staging":"approaching";
+};
+System.Action<string> wake=source=>{
+    if(!(bool)state["armed"]||(bool)state["busy"]||phase()=="needs_review"||!Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack)return;
+    var attackers=UnityEngine.Object.FindObjectsByType<Enemy.BrutalShark.SharkAISystem>(UnityEngine.FindObjectsSortMode.None).Where(s=>s.isActiveAndEnabled&&s.Status==Survival.Ai.BrutalShark.StatusBrutalShark.AttackRaft).ToArray();
+    if(attackers.Length!=1){block("attacking_shark_ambiguous");return;}shark=attackers[0];movement=UnityEngine.Object.FindObjectOfType<Survival.Views.Movement>();hud=UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+    if(movement==null||hud==null||hud.ActionButtons==null||hud.ActionButtons.Length==0||shark.gameObject.scene!=movement.gameObject.scene){block("runtime_binding_missing");return;}
+    var watch=data("QaAgent.ErrorWatch.v1");if(watch==null){block("error_watch_missing");return;}lock(watch["gate"]){if(!(bool)watch["armed"]){watch["baseline_total"]=watch["total"];watch["baseline_unexpected"]=watch["unexpected"];watch["expected"]=new object[0];watch["armed"]=true;ownMonitor=true;}watch["phase"]="shark_defense";}
+    if(errorWatchBlocked()){block("blocked_new_error");return;}
+    state["busy"]=true;state["phase"]="closing_ui";state["outcome"]="in_progress";state["resume_ready"]=false;state["interrupted_task"]=state["task"];trigger=source;began=UnityEditor.EditorApplication.timeSinceStartup;nextAction=began;attackEpoch++;retreatSeen=false;timeoutSeen=false;deathSeen=false;damageEvents=0;aimAttempts=0;uiAttempts=0;positionAttempts=0;recoveryAttempts=0;rangedRepositions=0;rangedBlocked=false;staged=false;endedAt=-1;hpAtWake=shark.Health.Value;lastHp=hpAtWake;
+    cancelMain();
+    if(!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)){ownSession=true;previousBackground=UnityEngine.Application.runInBackground;UnityEditor.SessionState.SetBool("QaAgent.FastUi.active",true);UnityEngine.Application.runInBackground=true;}
+    onDamage=amount=>{damageEvents++;lastHp=shark==null?lastHp:shark.Health.Value;record("damage",new{amount=amount,hp=lastHp});};onDeath=()=>{deathSeen=true;lastHp=0;};shark.DamageEventProp.AddListener(onDamage);shark.DeathEventProp.AddListener(onDeath);
+    statisticsSub=shark._statisticsAdd.Listen((uid,value)=>{if(uid=="enemy.shark.AttackRaft.retreat")retreatSeen=true;else if(uid=="enemy.shark.AttackRaft.timeout")timeoutSeen=true;});
+    var view=UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().FirstOrDefault(w=>w.GetType().Name=="GameView");if(view!=null){view.Focus();view.Repaint();}
+    record("wake",new{source=source,shark_id=shark.GetInstanceID(),task_present=state["task"]!=null});
+};
+System.Action<bool> attackSignal=active=>{if(active)System.Threading.Interlocked.Exchange(ref pending,1);};
+System.Action<LogData> logSignal=entry=>{if((entry.Message??"").Contains("Showing alert 'SharkAttack'"))System.Threading.Interlocked.Exchange(ref pending,2);};
+D.OnNewLog+=logSignal;
+UnityEditor.EditorApplication.CallbackFunction update=null;
+System.Action dispose=()=>{if(disposed)return;disposed=true;state["armed"]=false;cancelOwned();detachCombat();releaseSession();if(attackSub!=null)attackSub.Dispose();D.OnNewLog-=logSignal;if(update!=null)UnityEditor.EditorApplication.update-=update;state["phase"]="stopped";state["busy"]=false;};state["dispose"]=dispose;
+state["combat"]=(System.Action)(()=>wake("quest_or_manual_same_skill"));
+state["read"]=(System.Func<object>)(()=>new{status=phase(),armed=(bool)state["armed"],busy=(bool)state["busy"],outcome=(string)state["outcome"],source_bound=bound!=null,attack_epoch=attackEpoch,trigger=trigger,weapon_uid=weaponUid,weapon_family=weaponFamily,ranged_repositions=rangedRepositions,task=state["task"],interrupted_task=state["interrupted_task"],resume_ready=(bool)state["resume_ready"],coordinate_cache_in_idle=false,events=events.ToArray(),error_watch=errorWatchSnapshot()});
+update=()=>{if(disposed)return;try{
+    var now=UnityEditor.EditorApplication.timeSinceStartup;
+    if(!UnityEditor.EditorApplication.isPlaying){dispose();return;}
+    if(!(bool)state["armed"])return;
+    if(!(bool)state["busy"]){
+        if(phase()=="needs_review")return;
+        if(now-lastBind>1){lastBind=now;if(bound==null||!bound.isActiveAndEnabled||bound.IsDead){if(attackSub!=null)attackSub.Dispose();bound=UnityEngine.Object.FindObjectsByType<Enemy.BrutalShark.SharkAISystem>(UnityEngine.FindObjectsSortMode.None).FirstOrDefault(s=>s.isActiveAndEnabled&&!s.IsDead);attackSub=bound==null||bound._sharkAttacked==null?null:bound._sharkAttacked.Listen(attackSignal);}}
+        int signal=System.Threading.Interlocked.Exchange(ref pending,0);if(Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack&&(signal!=0||now-lastBind<.02))wake(signal==2?"log_confirmed_by_live_attack":signal==1?"SharkAttacked(true)":"live_attack_on_bind");return;
+    }
+    if(errorWatchBlocked()){block("blocked_new_error");return;}
+    if(UnityEditor.EditorApplication.isPaused){block("editor_paused");return;}
+    if(movement==null||!movement.gameObject.scene.isLoaded||hud==null){block("scene_changed");return;}
+    if(now-began>45){block("defense_time_budget");return;}
+    if(shark!=null)lastHp=shark.Health.Value;
+    bool active=Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack;
+    var outcome=((System.Func<object[],string>)System.AppDomain.CurrentDomain.GetData("QaAgent.SharkWarm.outcome"))(new object[]{retreatSeen,timeoutSeen,deathSeen,damageEvents,hpAtWake,lastHp,active});
+    if(outcome=="repelled"||outcome=="eliminated"){resolve(outcome);return;}
+    if(outcome=="shark_attack_timeout"){block(outcome);return;}
+    if(!active){if(endedAt<0)endedAt=now;if(now-endedAt>.3)block("attack_ended_without_retreat_proof");return;}
+    if(shark==null||shark.gameObject.scene!=movement.gameObject.scene){block("shark_source_changed");return;}
+    if(UnityEngine.Time.frameCount==lastFrame)return;lastFrame=UnityEngine.Time.frameCount;
+    if(phase()=="closing_ui"){
+        if(now<nextAction)return;nextAction=now+.25;
+        var tests=UnityEngine.Object.FindObjectOfType<TestGUI>();if(tests!=null&&(bool)field(tests,"_isTest")){
+            if(++uiAttempts>8){block("cheat_close_budget");return;}
+            if(UnityEditor.SessionState.GetString("QaAgent.SharkCheat.status","")=="click_pending")return;
+            var r=call("back");if(status(r)!="click_queued"){block("cheat_"+status(r));return;}return;
+        }
+        var closed=call("close");var result=status(closed);if(result=="closed_one"){if(++uiAttempts>8)block("ui_close_budget");return;}if(result!="clear"){block("ui_"+result);return;}
+        planApproach();return;
+    }
+    if(phase()=="waiting_ranged_target"){if(now>=nextAction)startAim();return;}
+    if(phase()=="waiting_position"){if(now>=nextAction){if(weaponFamily=="ranged"){rangedBlocked=false;startAim();}else planApproach();}return;}
+    if(phase()=="recovering"){if(!done("QaAgent.SharkMotor.v1"))return;var r=data("QaAgent.SharkMotor.v1")["result"];if(status(r)!="completed"){block("recovery_"+status(r));return;}if(weaponFamily=="ranged"){rangedBlocked=false;startAim();}else planApproach();return;}
+    if(phase()=="approaching"||phase()=="staging"||phase()=="ranged_reposition"){
+        if(!done("QaAgent.SharkRoute.v1"))return;var r=data("QaAgent.SharkRoute.v1")["result"];if(status(r)!="completed"){block("approach_"+status(r));return;}if(phase()=="staging"){planApproach();return;}rangedBlocked=false;startAim();return;
+    }
+    if(phase()=="aiming"){
+        if(!done("QaAgent.SharkAim.v1"))return;var r=data("QaAgent.SharkAim.v1")["result"];if(status(r)!="aimed"){block("aim_"+status(r));return;}
+        if(weaponFamily=="ranged"){
+            var sight=rangedSight();var decision=engagement(weaponFamily,sight);record("ranged_sight",new{status=sight,decision=decision});
+            if(decision=="reposition"){if(++rangedRepositions>3){block("ranged_line_still_blocked");return;}rangedBlocked=true;planApproach();return;}
+            if(decision=="wait"){state["phase"]="waiting_ranged_target";nextAction=now+.25;return;}
+            if(decision=="aim"){if(++aimAttempts>2){block("ranged_target_not_acquired");return;}startAim();return;}
+            if(decision!="shoot"){block("ranged_"+sight);return;}
+            rangedBlocked=false;aimAttempts=0;
+        }else if(!canHit()){if(++aimAttempts>2){block("melee_target_out_of_range");return;}planApproach();return;}
+        UnityEditor.SessionState.SetString("QaAgent.SharkMotor.v1.mode","run");UnityEditor.SessionState.SetString("QaAgent.SharkMotor.v1.action","hold_use");UnityEditor.SessionState.SetFloat("QaAgent.SharkMotor.v1.seconds",1.2f);UnityEditor.SessionState.SetBool("QaAgent.SharkMotor.v1.require_attack",true);var pressed=call("motor");if(status(pressed)!="running"){block("attack_"+status(pressed));return;}state["phase"]="striking";return;
+    }
+    if(phase()=="striking"){
+        if(!done("QaAgent.SharkMotor.v1"))return;var r=data("QaAgent.SharkMotor.v1")["result"];if(status(r)!="completed"&&status(r)!="attack_ended"){block("attack_"+status(r));return;}startAim();return;
+    }
+}catch(System.Exception ex){record("executor_exception",ex.GetType().Name+": "+ex.Message);block("executor_exception");}};
+UnityEditor.EditorApplication.update+=update;
+return new{status="installed_disarmed",input_sent=false,coordinates_cached=false};

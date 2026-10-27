@@ -1,0 +1,274 @@
+{
+  "id": "ON-UI-ENTRY-001",
+  "kind": "adaptive_ui_skill",
+  "title": "Пропустить стартовые окна и войти в игру",
+  "content": "Ассистент управляет входом через MCP: по текущему интерфейсу распознаёт и закрывает стартовые окна, при необходимости продолжает запуск/вход и проверяет результат. Набор и порядок окон не фиксированы; окон может не быть. Конкретная сцена назначения исключена.",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0",
+  "runtime": "UnityEditor",
+  "scene_id": null,
+  "world_instance_id": null,
+  "mission_id": null,
+  "control_profile_id": "ocean-nomad-editor-v1",
+  "locale": null,
+  "observed_at": "2026-10-22T07:15:06.6102168Z",
+  "last_confirmed_at": "2026-10-22",
+  "valid_until": null,
+  "status": "provisional",
+  "verified_by": {
+    "intent_and_scope": "human_user",
+    "mapping_review": "Codex",
+    "limited_runtime_entry": "Codex via Unity MCP, 2026-10-22"
+  },
+  "verification_method": "Намерение и границы подтверждены человеком. В прогоне 2026-10-22-adaptive-entry-01 ассистент через MCP выполнил START, закрытие Premium и Survival по актуальным компонентам/callback/raycast; подтвердил игровой интерфейс без стартовых окон и доступность UI без дальнейшего ввода. Общая стратегия для неизвестных окон и управление персонажем не проверены.",
+  "source": [
+    "human_demonstration",
+    "human_debrief",
+    "local_source_inspection",
+    "agent_mcp_run"
+  ],
+  "evidence_refs": [
+    {
+      "episode_id": "20261022T071506Z-de92c756",
+      "label": "Вход",
+      "availability": "local_only",
+      "journal_complete": true,
+      "video_available": false
+    },
+    {
+      "episode_id": "2026-10-22-adaptive-entry-01",
+      "availability": "local_only_outside_automation_repository",
+      "assessed_by": "Codex",
+      "entry_objective": "reached",
+      "qa_verdict": "PASS_ENTRY",
+      "verdict_scope": "Вход привёл на сцену игры; критерий результата уточнён пользователем 2026-10-22",
+      "console_audit": "out_of_scope; do not inspect Console in this case",
+      "screen_size": [
+        1280,
+        720
+      ],
+      "ui_actions": [
+        "setup.start",
+        "premium.dismiss",
+        "main_menu.enter_survival"
+      ],
+      "optional_windows_not_observed": [
+        "Discord",
+        "Mail"
+      ],
+      "evidence": [
+        "MCP snapshots",
+        "3 screenshots"
+      ],
+      "input_mode": "synthetic Unity EventSystem events via MCP",
+      "runtime_background_override_restored": true
+    },
+    {
+      "episode_id": "2026-10-22-adaptive-entry-02",
+      "availability": "local_only_outside_automation_repository",
+      "assessed_by": "Codex",
+      "entry_objective": "reached",
+      "qa_verdict": "PASS_ENTRY",
+      "console_audit": "out_of_scope; not read",
+      "screen_size": [
+        1280,
+        720
+      ],
+      "ui_actions": [
+        "setup.start",
+        "premium.dismiss",
+        "main_menu.enter_survival"
+      ],
+      "start_to_game_seconds": 82.11,
+      "play_to_game_seconds": 122.85,
+      "preparation_excluded": true,
+      "persistent_mcp_connection": true,
+      "input_mode": "synthetic Unity EventSystem events via MCP"
+    },
+    {
+      "episode_id": "2026-10-22-adaptive-entry-03",
+      "availability": "local_only_outside_automation_repository",
+      "assessed_by": "Codex",
+      "entry_objective": "reached",
+      "qa_verdict": "PASS_ENTRY",
+      "console_audit": "out_of_scope; not read",
+      "callback_semantics_checked": false,
+      "screen_size": [
+        1280,
+        720
+      ],
+      "ui_actions": [
+        "setup_start",
+        "premium_close",
+        "discord_close",
+        "menu_play"
+      ],
+      "start_to_game_seconds": 55.75,
+      "play_to_game_seconds": 74.42,
+      "mcp_requests": 105,
+      "preparation_excluded": true,
+      "optional_windows_observed": [
+        "Premium",
+        "Discord"
+      ],
+      "stopped_by_human": true
+    }
+  ],
+  "related_ids": [],
+  "supersedes": [],
+  "contradicts": [],
+  "preconditions": [
+    "Открыта игра в Editor; текущая стадия определяется по активному интерфейсу",
+    "Возможны разные стартовые окна и варианты вёрстки"
+  ],
+  "expected_effects": [
+    "Стартовые блокирующие окна пройдены, достигнут игровой режим"
+  ],
+  "evaluation_scope": {
+    "success": "Выбранные действия привели на сцену игры; конкретная локация не важна",
+    "console": "Исключена пользователем из текущего этапа; не читать и не использовать как условие PASS входа",
+    "execution_priority": "Быстрые переходы по актуальному UI; подготовка кода и подробный разбор выполняются вне активного прогона",
+    "next_run_optimization": "Direct persistent MCP HTTP client and single selected action plus bounded waiting used in episode 03. Callback-semantics checks removed. This used 105 requests; event subscriptions are not implemented. Preparation excluded from timing.",
+    "speed_acceptance": {
+      "accepted_by": "human_user",
+      "date": "2026-10-22",
+      "reference_episode": "2026-10-22-adaptive-entry-03",
+      "start_to_game_seconds": 55.75,
+      "scope": "Entry speed accepted; prior repetition series remains stopped"
+    }
+  },
+  "stop_conditions": [
+    "Достигнут игровой режим — не изучать в этом кейсе карту, сцену и миссии",
+    "Не найден однозначный доступный элемент нужного назначения — не подменять его соседней кнопкой",
+    "Нажатие не дало ожидаемого изменения — повторно проверить актуальный интерфейс вместо слепого повтора"
+  ],
+  "target_policy": {
+    "primary_identity": "Текст, значок и контекст текущего окна; действие выбирать по общей логике интерфейса",
+    "pre_action_semantics_checks": "Не изучать исходники, обработчики и внутренние последствия кнопки перед нажатием. Исторические source_binding в карточке — справочная информация, не обязательная проверка каждого действия",
+    "semantic_ids_are": "Проектные обозначения в этой карточке; не зарегистрированные MCP-команды и не стабильные ID игры",
+    "resolution": "Не переносить сохранённые пиксельные или нормализованные координаты как способ идентификации кнопки",
+    "layout_variants": "4x3/16x9 и другие варианты одного окна не являются разными намерениями",
+    "execution_plan": "По текущему интерфейсу выбрать очевидную смысловую цель и сразу нажать через MCP. Не добавлять отдельные запросы для предварительного подтверждения назначения кнопки; актуальную точку ввода получать из текущего элемента, не из старых координат",
+    "runtime_verification": "После действия проверить закрытие текущего окна или появление ожидаемого следующего состояния; click/raycast сами по себе не доказывают результат"
+  },
+  "observed_failures": [
+    {
+      "evidence_sequences": [
+        153,
+        157
+      ],
+      "intended_action": "premium.dismiss",
+      "observed_hit_region": "Premium/Subscription/FreeTrial/Back",
+      "human_explanation": "Пытался нажать крестик и закрыть окно",
+      "interpretation": "Промахи относительно намерения; не действия выбора или оформления Trial",
+      "include_in_replay": false
+    },
+    {
+      "evidence_sequences": [
+        106,
+        166
+      ],
+      "observed_hit_region": "Фон загрузки / фон приглашения Discord",
+      "interpretation": "Назначение этих нажатий не подтверждено; не включать в обязательную последовательность",
+      "include_in_replay": false
+    }
+  ],
+  "out_of_scope": [
+    "Trial и тестирование подписок отложены пользователем",
+    "Разбор сцены, карты, объектов, передвижения и квестов после входа",
+    "Эта необычная вёрстка не является эталоном среднего мобильного устройства"
+  ],
+  "limitations": [
+    "Текущий рекордер сохраняет ui_hit, а не факт вызова обработчика или полный снимок активных окон",
+    "Привязки UI основаны на проверенном исходном коде; в новом билде их нужно перепроверить",
+    "Проверена одна ветка входа через MCP с существующим сохранением и пропуском отсутствующего Discord; надёжность общего наблюдателя всех/неизвестных окон ещё не доказана",
+    "Проверена доступность игрового UI без дальнейших действий; движение и прыжки не проверены. Аудит новых ошибок Console неполон",
+    "Сырой журнал и видео не переносятся в Git этой карточкой; MP4 этой попытки отсутствует"
+  ],
+  "controller_model": {
+    "decision_owner": "assistant",
+    "interaction_transport": "MCP",
+    "local_helpers_scope": [
+      "Получение ограниченного актуального снимка интерфейса/изображения",
+      "Выполнение одного выбранного ассистентом действия или ограниченного примитива ввода",
+      "Запись телеметрии и доказательств"
+    ],
+    "local_helpers_must_not": "Самостоятельно выбирать следующие окна/ветки и исполнять весь маршрут по фиксированному локальному сценарию",
+    "memory_access": "Извлекать только относящиеся к текущему окну знания; не загружать весь архив на каждое действие"
+  },
+  "window_variability": {
+    "all_examples_optional": true,
+    "example_order_is_not_required": true,
+    "other_windows_possible": true,
+    "no_windows_is_valid": true,
+    "unknown_window": "Ассистент выясняет назначение и доступное действие закрытия по свежим данным; при неоднозначности уточняет, а не выбирает соседнюю кнопку"
+  },
+  "agent_control_loop": [
+    "Получить свежие данные о текущем интерфейсе и состоянии перехода через доступные MCP-инструменты",
+    "Если цель входа уже достигнута — завершить этот кейс, без изучения карты/сцены",
+    "Если идёт загрузка — ограниченно подождать и снова наблюдать",
+    "Если есть блокирующее стартовое окно — определить его назначение и доступное действие закрытия; отсутствующие знакомые окна не ждать",
+    "Если текущий интерфейс требует продолжить запуск/войти из меню — выбрать соответствующее действие по смыслу",
+    "Отправить выбранное действие через MCP по актуальному элементу, затем проверить эффект",
+    "Повторить наблюдение; при неизвестном/неоднозначном состоянии, зависании или отсутствии прогресса остановиться и уточнить"
+  ],
+  "known_action_examples": [
+    {
+      "id": "setup.start",
+      "intent": "Продолжить запуск из dev setup, если он показан",
+      "target_role": "button",
+      "target_meaning": "START в dev setup",
+      "source_binding": "SetupScreenController._startButton -> OnStart",
+      "path_hint": "SetupScreen/StartButton",
+      "evidence_sequences": [
+        56,
+        58
+      ],
+      "after": "Началась загрузка"
+    },
+    {
+      "id": "premium.dismiss",
+      "intent": "Закрыть стартовое предложение Premium",
+      "target_role": "close_button",
+      "target_meaning": "Крестик именно окна Premium",
+      "source_binding": "PremiumWindowNewManager._view.OnClose -> CloseClick",
+      "path_hint": "PremiumNewVariants_*/Panel/CloseButton",
+      "evidence_sequences": [
+        161
+      ],
+      "before": "Дождаться доступности крестика; в исходниках его включение может быть отложено",
+      "after": "Premium больше не блокирует следующий интерфейс"
+    },
+    {
+      "id": "discord.dismiss",
+      "intent": "Закрыть приглашение Discord, если оно показано",
+      "target_role": "close_button",
+      "target_meaning": "Кнопка закрытия приглашения",
+      "source_binding": "UIDiscordPopupView._close -> UIDiscordPopupManager.OnClose",
+      "path_hint": "UIPopupDiscord/*/UIButtonClose",
+      "evidence_sequences": [
+        170
+      ],
+      "after": "Приглашение закрыто"
+    },
+    {
+      "id": "main_menu.enter_survival",
+      "intent": "Перейти из главного меню в игру",
+      "target_role": "play_button",
+      "target_meaning": "Survival: играть или продолжить в зависимости от сохранения",
+      "source_binding": "MainScreenWindow2._survivalWidget -> MainScreenWindowManager2.OnPlay",
+      "path_hint": "MainScreen2/Survival",
+      "evidence_sequences": [
+        178
+      ],
+      "after": "Переход в игровой режим; конкретная сцена назначения не входит в этот навык"
+    }
+  ],
+  "learned_entry_rules": [
+    "Choose obvious actions from current UI meaning; do not inspect source/callback semantics before each click.",
+    "Known startup windows are optional: Discord absent in episode 02, present after Premium in episode 03. Close it only when present.",
+    "After each chosen input observe the resulting state; finish entry once Game is confirmed. Destination content is outside scope.",
+    "Skip Console and per-step screenshots in this entry case. Use images only when current UI is ambiguous.",
+    "Human stopped repetitions after episode 03, then accepted its 55.75-second entry speed and moved to new-game learning; do not resume the stopped loop without a new request."
+  ]
+}

@@ -1,0 +1,134 @@
+// Method body for execute_code. Only START and identified modal close controls dispatch events.
+const string requested = "__CONTROL__";
+const bool dispatch = __DISPATCH__;
+if(UnityEditor.SessionState.GetBool("QaAgent.FastUi.warmup",false))return new{status="compiled_only",input_sent=false};
+__ERROR_WATCH_SETUP__
+if(dispatch&&errorWatchBlocked())return new{status="blocked_new_error",error_watch=errorWatchSnapshot()};
+if (dispatch && requested != "setup_start" && requested != "mail_close" && requested != "premium_close" && requested != "discord_close")
+    return new { status = "refused", reason = "Control is outside startup scope" };
+var playing = UnityEditor.EditorApplication.isPlaying;
+var sceneNames = new System.Collections.Generic.List<string>();
+var owners = new System.Collections.Generic.List<UnityEngine.MonoBehaviour>();
+System.Func<UnityEngine.GameObject, string> path = go => {
+    var parts = new System.Collections.Generic.List<string>();
+    for (var t = go.transform; t != null; t = t.parent) parts.Insert(0, t.name);
+    return string.Join("/", parts.ToArray());
+};
+for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++) {
+    var s = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+    if (!s.isLoaded) continue;
+    sceneNames.Add(s.name);
+    if (s.name != "Setup" && s.name != "Splash" && s.name != "Map") continue;
+    foreach (var root in s.GetRootGameObjects())
+        owners.AddRange(root.GetComponentsInChildren<UnityEngine.MonoBehaviour>(true));
+}
+System.Func<UnityEngine.Component, string, UnityEngine.Component> reference = (owner, field) => {
+    if (owner == null) return null;
+    var p = new UnityEditor.SerializedObject(owner).FindProperty(field);
+    return p == null ? null : p.objectReferenceValue as UnityEngine.Component;
+};
+var controls = new System.Collections.Generic.Dictionary<string, UnityEngine.Component>();
+var counts = new System.Collections.Generic.Dictionary<string, int>();
+var windows = new System.Collections.Generic.List<object>();
+var gates = new System.Collections.Generic.Dictionary<string, bool>();
+foreach (var owner in owners) {
+    if (owner == null || !owner.isActiveAndEnabled) continue;
+    string type = owner.GetType().FullName;
+    if (owner is Acme.Gui.Abstractions.AbstractWindowPrefab)
+        windows.Add(new { type = type, path = path(owner.gameObject) });
+    if (type == "TestBuild.SetupScreen.SetupScreenController") {
+        counts["setup_start"] = counts.ContainsKey("setup_start") ? counts["setup_start"] + 1 : 1;
+        controls["setup_start"] = reference(owner, "_startButton");
+    }
+    if (type == "Acme.Security.EnterLoginPopup") {
+        counts["mail_close"] = counts.ContainsKey("mail_close") ? counts["mail_close"] + 1 : 1;
+        controls["mail_close"] = reference(owner, "_close");
+    }
+    if (type == "MainScreen.Premium.PremiumWindowNew") {
+        counts["premium_close"] = counts.ContainsKey("premium_close") ? counts["premium_close"] + 1 : 1;
+        controls["premium_close"] = reference(owner, "_buttonClose");
+    }
+    if (type == "Survival.Windows.Popups.Discord.UIDiscordPopupView") {
+        counts["discord_close"] = counts.ContainsKey("discord_close") ? counts["discord_close"] + 1 : 1;
+        controls["discord_close"] = reference(owner, "_close");
+    }
+    if (type == "MainScreen.MainScreenWindow2") {
+        counts["menu"] = counts.ContainsKey("menu") ? counts["menu"] + 1 : 1;
+        controls["menu_settings"] = reference(owner, "_settingsButton");
+        controls["menu_play"] = reference(reference(owner, "_survivalWidget"), "_mainButton");
+    }
+    if (type == "AssetBundleLoader.Old.SplashScreenDownloader" && playing) {
+        var prop = owner.GetType().GetProperty("InitializationSteps", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var steps = prop == null ? null : prop.GetValue(owner, null) as System.Collections.IDictionary;
+        if (steps != null) foreach (System.Collections.DictionaryEntry entry in steps) {
+            string key = entry.Key as string;
+            if ((key == "market" || key == "services" || key == "cross_promo") && entry.Value is bool)
+                gates[key] = (bool)entry.Value;
+        }
+    }
+}
+var eventSystem = UnityEngine.EventSystems.EventSystem.current;
+var states = new System.Collections.Generic.List<object>();
+UnityEngine.GameObject clickTarget = null;
+UnityEngine.EventSystems.PointerEventData clickData = null;
+string refusal = "Requested control was not found";
+foreach (var pair in controls) {
+    var component = pair.Value;
+    var button = component as Survival.Widgets.UI.Button.UISimpleButton;
+    var go = component == null ? null : component.gameObject;
+    var rect = go == null ? null : go.GetComponent<UnityEngine.RectTransform>();
+    var canvas = go == null ? null : go.GetComponentInParent<UnityEngine.Canvas>();
+    var callbackField = typeof(Survival.Widgets.UI.Button.UISimpleButton).GetField("_callback", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+    var callback = button == null ? null : callbackField.GetValue(button) as System.Delegate;
+    string method = callback == null ? null : callback.Method.Name;
+    bool callbackReady = pair.Key == "setup_start" ? method == "OnStart" :
+        pair.Key == "mail_close" ? method == "OnAuthCancel" :
+        pair.Key == "premium_close" ? method == "CloseClick" : callback != null;
+    if (pair.Key == "discord_close") callbackReady = method == "OnClose" && callback != null &&
+        callback.Target != null && callback.Target.GetType().FullName == "Survival.Windows.Popups.Discord.UIDiscordPopupManager";
+    var camera = canvas == null || canvas.renderMode == UnityEngine.RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+    var point = rect == null ? UnityEngine.Vector2.zero : UnityEngine.RectTransformUtility.WorldToScreenPoint(camera, rect.TransformPoint(rect.rect.center));
+    var data = eventSystem == null ? null : new UnityEngine.EventSystems.PointerEventData(eventSystem) {
+        position = point, pressPosition = point, button = UnityEngine.EventSystems.PointerEventData.InputButton.Left,
+        pointerId = -1, eligibleForClick = true, clickCount = 1, clickTime = UnityEngine.Time.unscaledTime
+    };
+    var hits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+    if (data != null && playing) eventSystem.RaycastAll(data, hits);
+    bool raycast = hits.Count > 0 && go != null && hits[0].gameObject != null && hits[0].gameObject.transform.IsChildOf(go.transform);
+    bool visible = canvas != null && canvas.isActiveAndEnabled;
+    if (go != null) foreach (var group in go.GetComponentsInParent<UnityEngine.CanvasGroup>(false))
+        if (group.alpha <= 0.01f || !group.interactable || !group.blocksRaycasts) visible = false;
+    bool available = playing && !UnityEditor.EditorApplication.isPaused && button != null && button.isActiveAndEnabled && !button.BlockButton && visible && callbackReady &&
+        !Survival.Drawers.ArmsDrawer.IsAnimate && eventSystem != null && eventSystem.isActiveAndEnabled &&
+        point.x >= 0 && point.y >= 0 && point.x < UnityEngine.Screen.width && point.y < UnityEngine.Screen.height && raycast;
+    if (counts.ContainsKey(pair.Key)) available = available && counts[pair.Key] == 1;
+    states.Add(new { control = pair.Key, path = go == null ? null : path(go), callback = method,
+        active = go != null && go.activeInHierarchy, visible = visible, blocked = button != null && button.BlockButton,
+        screen_x = point.x, screen_y = point.y, raycast_reachable = raycast,
+        top_hit = hits.Count == 0 || hits[0].gameObject == null ? null : path(hits[0].gameObject), available = available });
+    if (pair.Key == requested && available) {
+        clickTarget = go;
+        clickData = data;
+        clickData.pointerCurrentRaycast = hits[0];
+        clickData.pointerPressRaycast = hits[0];
+        clickData.pointerPress = go;
+        clickData.rawPointerPress = hits[0].gameObject;
+        refusal = null;
+    } else if (pair.Key == requested) refusal = "Control failed active, callback, visibility or raycast checks";
+}
+bool sent = false;
+if (dispatch && clickTarget != null && clickData != null) {
+    UnityEngine.EventSystems.ExecuteEvents.Execute(clickTarget, clickData, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+    UnityEngine.EventSystems.ExecuteEvents.Execute(clickTarget, clickData, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+    if (clickTarget != null && clickTarget.activeInHierarchy)
+        UnityEngine.EventSystems.ExecuteEvents.Execute(clickTarget, clickData, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+    sent = true;
+}
+return new { error_watch=errorWatchSnapshot(), status = dispatch ? (sent ? "dispatched" : "refused") : "observed",
+    requested_control = requested, reason = dispatch && !sent ? refusal : null,
+    input_mode = "synthetic_EventSystem_pointer_events_with_raycast; not physical input",
+    observed_utc = System.DateTime.UtcNow.ToString("o"), playing = playing, paused = UnityEditor.EditorApplication.isPaused,
+    version = UnityEngine.Application.version, frame = UnityEngine.Time.frameCount,
+    width = UnityEngine.Screen.width, height = UnityEngine.Screen.height,
+    scenes = sceneNames, controls = states, active_windows = windows, initialization_steps = gates,
+    menu_owner_count = counts.ContainsKey("menu") ? counts["menu"] : 0 };

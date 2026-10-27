@@ -1,0 +1,89 @@
+{
+  "id": "ON-UI-SKILLS-001",
+  "kind": "approved_skill_index",
+  "game_id": "ocean-nomad",
+  "runtime": "UnityEditor",
+  "source": "human_user, 2026-10-22",
+  "human_instruction": "После моего апрува объединяй полученные знания.",
+  "policy": {
+    "consolidate_after_human_approval": true,
+    "repeat_approval_for_same_scope": false,
+    "keep_observation_and_requirement_approval_separate": true,
+    "unverified_hypotheses_are_not_skills": true,
+    "unexpected_window_returns_control": true,
+    "new_red_error_stops": true,
+    "load_only_relevant_skill_and_policy": true,
+    "separate_domain_skills_reuse_execution_mechanism": true,
+    "switch_skills_using_fresh_state": true,
+    "single_unity_input_owner_including_subagents": true
+  },
+  "domain_skill_composition": {
+    "source": "human_user, 2026-10-22: работа с квестами — отдельный навык; использовать опыт создания UI-навыка для последующих навыков и переключаться по задаче",
+    "reusable_mechanism": "Семантический выбор и актуальная геометрия; упорядоченные реальные кадры ввода, готовность контекста, ограниченный знакомый маршрут без отдельных решений модели, свежая итоговая проверка, guard ошибок и cleanup.",
+    "skill_contract": [
+      "назначение и условия выбора",
+      "параметры задачи",
+      "предусловия по свежему состоянию",
+      "изученные действия",
+      "ожидаемый результат и проверка",
+      "остановки и передача управления",
+      "источники опыта и статус проверки"
+    ],
+    "selection": "По цели загрузить только подходящий навык, его зависимости и общие ограничения. При переключении передать компактный результат и заново проверить нужные предусловия; не загружать всю память.",
+    "subagents": "Можно разделять анализ записи, знаний и результатов. Только один исполнитель управляет Unity; передача управления явная. Отдельный субагент на каждый клик не требуется.",
+    "next_skill": {
+      "intent": "Вызвать выбранный квест через dev-панель",
+      "semantic_route": "чит-панель → Quests → квест по названию или подтверждённому ID",
+      "status": "hook_use launch and collect HUMAN_APPROVED23.10; intro/control/hands_collect retain earlier verification limits",
+      "known_dependency": "ON-UI-DEVTOOLS-001",
+      "knowledge": [
+        "ON-QUEST-START-001",
+        "ON-QUEST-ONBOARD-001"
+      ],
+      "unknown": "Не переносить апрув hook_use на остальные UID. Для нового навыка брать общий механизм, новый маршрут и результат проверять отдельно."
+    }
+  },
+  "index": "projects/ocean-nomad/tools/fast-ui/approved-skills.json",
+  "entry_point": "projects/ocean-nomad/tools/fast-ui/approved-ui.mjs#runApprovedUiSkill",
+  "settings_skill": {
+    "module": "settings-skill.mjs",
+    "checks": 13,
+    "transport": "Fixed cached commands; target and fraction are runtime data in a local parameter file.",
+    "preparation": "3 primitives compiled with input disabled; compact snapshot verified in Unity.",
+    "node_tests_passed": 7,
+    "live_consolidated_run": "PASS_UI_SCOPE: 13 checks, 0 new red errors, restored baseline, ended in Game",
+    "new_speed_measurement": {
+      "seconds": 4.055,
+      "compiled_commands_prepared": true,
+      "includes": "begin, UI actions, assertions, restoration, reopen and cleanup",
+      "human_speed_acceptance": "not yet requested/received"
+    },
+    "prior_evidence": "13 UI assertions previously passed with individual decisions; not a benchmark of the consolidated skill.",
+    "last_episode": "2026-10-22T12-39-41-191Z"
+  },
+  "boundaries": [
+    "Editor login/restore excluded as expected",
+    "No main-menu settings in settings test",
+    "No purchases, external destinations or progress deletion in consolidated settings profile",
+    "Physical sound/vibration/camera/rendering effects remain unverified",
+    "Legacy startup executor not promoted until watcher migration"
+  ],
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "episode": "2026-10-22T12-34-52-534Z",
+    "files": [
+      "preparation.json",
+      "no-input-verification.json"
+    ]
+  },
+  "updated_at": "2026-10-23",
+  "spatial_skill_registry": "projects/ocean-nomad/tools/fast-spatial/approved-skills.json",
+  "approved_spatial_skills": [
+    {
+      "id": "ON-SPATIAL-HOOK-COLLECT-001",
+      "contract": "skills/ON-SPATIAL-HOOK-COLLECT-001.json",
+      "scope": "hook_use in current Editor;2human-approved full trials",
+      "source": "human_user2026-10-23"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+// Pure outcome policy shared by quest defense and passive defense; no Unity/game calls.
+bool retreat=(bool)args[0],timeout=(bool)args[1],death=(bool)args[2],active=(bool)args[6];
+int damage=(int)args[3];float start=(float)args[4],end=(float)args[5];
+if(retreat&&!active&&damage>0&&end<start)return "repelled";
+if(death&&damage>0&&end<=0)return "eliminated";
+if(timeout)return "shark_attack_timeout";
+return active?"in_progress":"attack_ended_without_retreat_proof";

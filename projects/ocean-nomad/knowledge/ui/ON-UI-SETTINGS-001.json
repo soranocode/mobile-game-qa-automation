@@ -1,0 +1,236 @@
+{
+  "id": "ON-UI-SETTINGS-001",
+  "kind": "ui_behavior_catalog",
+  "title": "Настройки: цели управления и ожидаемые результаты",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0",
+  "runtime": "UnityEditor",
+  "observed_at": "2026-10-22T11:02:12.862Z",
+  "status": "partial_verification",
+  "source": [
+    "human_requirements",
+    "agent_runtime_exploration_via_MCP"
+  ],
+  "routes": {
+    "raft_or_island": [
+      "open_menu",
+      "open_settings"
+    ],
+    "map_ui": [
+      "open_settings"
+    ],
+    "dev_overlay": "None: выбирать открытую верхнюю часть текущей кнопки настроек"
+  },
+  "scope": "Проверка UI и результата; физические эффекты звука/вибрации/камеры, магазин, реальное восстановление покупок и аккаунты требуют отдельных наблюдений.",
+  "evaluation_policy": {
+    "input_sent_is_not_pass": true,
+    "known_route": "Быстро выполнить известные переходы и сверить конечное состояние с контрактом.",
+    "new_control": "Прочитать видимую подпись/состояние, задать ожидание, нажать через EventSystem, сверить результат; неизвестное вернуть ассистенту.",
+    "failure_classification": [
+      "observed_mismatch",
+      "environment_or_external_dependency_unresolved",
+      "input_not_sent",
+      "needs_review"
+    ],
+    "restore_reversible_settings": true,
+    "no_blind_replay_after_transport_failure": true,
+    "stop_on_new_unexpected_red_error": true
+  },
+  "root": "CanvasInterface/UIPause",
+  "controls": [
+    {
+      "id": "close_settings",
+      "suffix": "Panel/Close_Button",
+      "expected": "Закрыть настройки и вернуться к игровому интерфейсу",
+      "status": "VERIFIED_UI"
+    },
+    {
+      "id": "graphics",
+      "suffix": "Panel/Elements/Graphics/SliderGraphics",
+      "expected": "Изменить уровень графики: низкая/средняя/высокая",
+      "status": "UI_VALUE_VERIFIED_EFFECT_UNVERIFIED",
+      "observed": "Значение ползунка изменилось 1→0→1. QualitySettings.GetQualityLevel оставался 2 при открытых настройках; применение графики не доказано."
+    },
+    {
+      "id": "sensitivity",
+      "suffix": "Panel/Elements/Sensitivity/SliderSensivity",
+      "expected": "Изменить чувствительность камеры",
+      "status": "UI_VALUE_VERIFIED_EFFECT_UNVERIFIED",
+      "observed": "3→1.875→2.99999714; исходное значение восстановлено с погрешностью UI менее 0.00001. Движение камеры не проверялось."
+    },
+    {
+      "id": "effects",
+      "suffix": "Panel/Elements/Settings/Contents/Effects/UISettingsSwitch",
+      "expected": "Переключить звуковые эффекты",
+      "status": "VERIFIED_UI_EFFECT_UNVERIFIED",
+      "observed": "Подсветка выбранного значения переключилась и восстановлена. Звук/вибрация физически не оценивались."
+    },
+    {
+      "id": "music",
+      "suffix": "Panel/Elements/Settings/Contents/Music/UISettingsSwitch",
+      "expected": "Переключить музыку",
+      "status": "VERIFIED_UI_EFFECT_UNVERIFIED",
+      "observed": "Подсветка выбранного значения переключилась и восстановлена. Звук/вибрация физически не оценивались."
+    },
+    {
+      "id": "vibration",
+      "suffix": "Panel/Elements/Settings/Contents/Vibration/UISettingsSwitch",
+      "expected": "Переключить вибрацию",
+      "status": "VERIFIED_UI_EFFECT_UNVERIFIED",
+      "observed": "Подсветка выбранного значения переключилась и восстановлена. Звук/вибрация физически не оценивались."
+    },
+    {
+      "id": "fps",
+      "suffix": "Panel/Elements/Settings/Contents/FPS/UISettingsSwitch",
+      "expected": "Выбрать ограничение 30/60 FPS",
+      "status": "VERIFIED_UI_AND_TARGET_FPS",
+      "observed": "Подсветка 60→30→60 и Application.targetFrameRate 60→30→60. Это ограничение, не измерение реального FPS."
+    },
+    {
+      "id": "language_next",
+      "suffix": "Panel/Elements/BottomElements/LanguageSwitch/Language/ArrowRight",
+      "expected": "Следующий язык и обновление локализации",
+      "status": "VERIFIED_UI",
+      "observed": "Русский→английский, подписи настроек переведены"
+    },
+    {
+      "id": "language_previous",
+      "suffix": "Panel/Elements/BottomElements/LanguageSwitch/Language/ArrowLeft",
+      "expected": "Предыдущий язык",
+      "status": "VERIFIED_UI",
+      "observed": "Английский→русский, подписи восстановлены"
+    },
+    {
+      "id": "support",
+      "suffix": "Panel/Elements/BottomElements/Support",
+      "expected": "Открыть способ обращения в поддержку; отправка сообщения отдельное действие",
+      "status": "NEEDS_REVIEW_EXTERNAL_RESULT",
+      "observed": "Pointer input sent, нового Unity-окна не обнаружено. Внешнее приложение не проверялось."
+    },
+    {
+      "id": "restore_purchases",
+      "suffix": "Panel/Elements/BottomElements/RestorePurchases",
+      "expected": "Попытка восстановления покупок и сообщение о результате",
+      "status": "EDITOR_UNAVAILABLE_EXPECTED_BY_HUMAN",
+      "observed": "Окно «ВНИМАНИЕ!» с ошибкой соединения и восстановления. «ОК» закрывает. Причина ошибки не установлена.",
+      "editor_expectation": "Авторизация и восстановление покупок в Editor недоступны; отсутствие этих функций ожидаемо и само по себе не является багом.",
+      "expected_functional_verification_runtime": "Outside current Editor verification scope"
+    },
+    {
+      "id": "new_game",
+      "suffix": "Panel/Elements/BottomElements/NewGame",
+      "expected": "Подтверждение удаления прогресса с ДА/НЕТ; НЕТ оставляет настройки",
+      "status": "VERIFIED_UI_ROUTE_ONLY",
+      "observed": "Подтверждение и НЕТ проверены. Ранее ДА пройдено по разрешению человека; сброс квестов исключён из текущего критерия."
+    },
+    {
+      "id": "promo_code",
+      "suffix": "Panel/Elements/BottomElements/EnterCode",
+      "expected": "Окно ввода промокода с активацией и закрытием",
+      "status": "OPEN_CLOSE_VERIFIED_ACTIVATION_UNTESTED",
+      "observed": "Открывается UIEnterCodeView, есть поле и АКТИВИРОВАТЬ; крестик возвращает в настройки. Код не вводился."
+    },
+    {
+      "id": "main_menu",
+      "suffix": "Panel/Elements/BottomElements/MainMenu",
+      "expected": "Подтверждение «ГЛАВНОЕ МЕНЮ / Выйти?»; НЕТ отменяет, ДА ведёт в главное меню; закрыть необязательные Premium/Discord",
+      "status": "VERIFIED_FINAL_UI_STATE",
+      "observed": "НЕТ проверено. Полный навык из HUD завершён за 2.440 с; единственное окно MainScreenWindow2, доступна ПРОДОЛЖИТЬ."
+    },
+    {
+      "id": "login",
+      "suffix": "Panel/Elements/Social&UserID/LoggedOut/Login",
+      "expected": "Открыть выбор способа сохранения/авторизации",
+      "status": "EDITOR_UNAVAILABLE_EXPECTED_BY_HUMAN",
+      "observed": "SelectLoginServicePopup «Сохранить прогресс». Найден только крестик; он возвращает в настройки. Аккаунт не подключался.",
+      "editor_expectation": "Авторизация и восстановление покупок в Editor недоступны; отсутствие этих функций ожидаемо и само по себе не является багом.",
+      "expected_functional_verification_runtime": "Outside current Editor verification scope"
+    },
+    {
+      "id": "terms",
+      "suffix": "Panel/Elements/Social&UserID/PrivacyEula/EULA",
+      "expected": "Открыть условия использования",
+      "status": "LABEL_BASED_EXPECTATION_NOT_RUN"
+    },
+    {
+      "id": "privacy",
+      "suffix": "Panel/Elements/Social&UserID/PrivacyEula/PrivacyPolice",
+      "expected": "Открыть политику конфиденциальности",
+      "status": "LABEL_BASED_EXPECTATION_NOT_RUN"
+    },
+    {
+      "id": "social_links",
+      "suffix": "Panel/Elements/Social&UserID/SocialButtons/SocialButton(Clone)",
+      "expected": "Открыть соответствующую социальную площадку; не отправлять сообщения и не вступать автоматически",
+      "status": "ICONS_INVENTORIED_DESTINATIONS_UNVERIFIED",
+      "sprites": [
+        "social_network_icon_02",
+        "social_network_icon_06",
+        "social_network_icon_discord",
+        "TikTok_logo 1",
+        "X_logo"
+      ],
+      "selector_note": "Пять одинаковых путей. Для выбора нужен уникальный текущий объект и значок; общий путь неоднозначен. Первые два назначения не установлены."
+    }
+  ],
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "episode": "2026-10-22T10-56-48-917Z",
+    "files": [
+      "exploration.json",
+      "main-menu-run.json",
+      "main-menu-run-2.json"
+    ],
+    "first_exit_skill_attempt": "NEEDS_REVIEW: дополнительный Discord. Закрытие изучено и включено; этот вариант далее проверен тестами контроллера, во втором живом прогоне Discord не появлялся."
+  },
+  "main_menu_entry": {
+    "status": "BLOCKED_BY_CONFIRMED_ERROR_IN_EDITOR",
+    "selector": "CanvasController/MainScreen2/Settings",
+    "expected": "Открыть настройки из главного меню",
+    "observed": "2/2 MCP нажатия не открыли настройки. VContainerException: PauseManager не создаётся из-за отсутствия регистрации RateUs.ShowRateUsMail.",
+    "bug_ref": "projects/ocean-nomad/bugs/ON-UI-001-settings-main-menu.md",
+    "evidence_episode": "2026-10-22T11-48-20-994Z",
+    "verified_at": "2026-10-22T11:52:19.434Z",
+    "scope": "Editor 2.11.0; устройство не проверено"
+  },
+  "error_watch_policy": "ON-UI-ERRORWATCH-001",
+  "editor_limitations": {
+    "source": "human_user",
+    "date": "2026-10-22",
+    "runtime": "UnityEditor",
+    "features": [
+      "login",
+      "restore_purchases"
+    ],
+    "expectation": "Авторизация и восстановление покупок в Editor недоступны; отсутствие этих функций ожидаемо и само по себе не является багом.",
+    "scope": "Только Unity Editor. Не игнорировать произвольные ошибки и ошибки открытия настроек."
+  },
+  "last_ui_test": {
+    "date": "2026-10-22",
+    "source": "agent_runtime_via_MCP",
+    "entry": "Game HUD → dashboard → settings",
+    "result": "PASS_UI_SCOPE",
+    "checks_passed": 13,
+    "new_red_errors": 0,
+    "settings_restored": true,
+    "reopen_persistence_verified": true,
+    "final_scene": "Game",
+    "episode": "2026-10-22T12-13-06-188Z",
+    "availability": "local_only_outside_automation_repository",
+    "limitations": [
+      "Авторизация и восстановление покупок: ожидаемо недоступны в Editor",
+      "Соцсети, поддержка и правовые ссылки: внешние назначения не проверялись",
+      "Фактический звук, вибрация, чувствительность камеры и визуальный эффект качества: не оценивались",
+      "Промокод: проверены открытие/закрытие; активация не выполнялась"
+    ],
+    "tool_interruption": "One Node timeout recovered; relevant checks repeated and saved; no blind input replay"
+  },
+  "consolidated_skill": {
+    "approved_by": "human_user, 2026-10-22",
+    "index": "ON-UI-SKILLS-001",
+    "module": "projects/ocean-nomad/tools/fast-ui/settings-skill.mjs",
+    "export": "runApprovedSettingsChecks",
+    "verification": "PASS_UI_SCOPE live, 13 checks, 4.055 seconds, 0 new errors, baseline restored",
+    "last_episode": "2026-10-22T12-39-41-191Z"
+  }
+}

@@ -1,0 +1,20 @@
+// Read-only minimum geometry. No object paths, UI hierarchy, screenshot or render data.
+var timer=System.Diagnostics.Stopwatch.StartNew();
+var m=UnityEngine.Object.FindObjectOfType<Survival.Views.Movement>();if(m==null)return new{status="no_player"};
+var cc=m.GetComponent<UnityEngine.CharacterController>();if(cc==null)return new{status="no_controller"};
+// COLLISION_POLICY_BEGIN
+System.Func<UnityEngine.Collider,bool> collisionEnabled=c=>c!=null&&c.enabled&&!c.isTrigger&&c.gameObject.activeInHierarchy&&!UnityEngine.Physics.GetIgnoreLayerCollision(cc.gameObject.layer,c.gameObject.layer)&&!UnityEngine.Physics.GetIgnoreCollision(cc,c);
+// COLLISION_POLICY_END
+int collisionMask=0;for(int layer=0;layer<32;layer++)if(!UnityEngine.Physics.GetIgnoreLayerCollision(cc.gameObject.layer,layer))collisionMask|=1<<layer;
+var scene=m.gameObject.scene;
+var floors=UnityEngine.Object.FindObjectsByType<UnityEngine.BoxCollider>(UnityEngine.FindObjectsSortMode.None).Where(c=>c.enabled&&!c.isTrigger&&c.gameObject.activeInHierarchy&&c.gameObject.scene==scene&&c.name.IndexOf("foundation",System.StringComparison.OrdinalIgnoreCase)>=0).ToArray();
+if(floors.Length==0)return new{status="no_foundations"};
+var xmin=floors.Min(c=>c.bounds.min.x);var xmax=floors.Max(c=>c.bounds.max.x);var zmin=floors.Min(c=>c.bounds.min.z);var zmax=floors.Max(c=>c.bounds.max.z);var deck=floors.Max(c=>c.bounds.max.y);
+var ids=new System.Collections.Generic.HashSet<int>(floors.Select(c=>c.GetInstanceID()));
+var obstacles=UnityEngine.Physics.OverlapBox(new UnityEngine.Vector3((xmin+xmax)*.5f,deck+.85f,(zmin+zmax)*.5f),new UnityEngine.Vector3((xmax-xmin)*.5f+.25f,.8f,(zmax-zmin)*.5f+.25f),UnityEngine.Quaternion.identity,collisionMask,UnityEngine.QueryTriggerInteraction.Ignore).Where(c=>collisionEnabled(c)&&c.gameObject.scene==scene&&!ids.Contains(c.GetInstanceID())&&c.GetComponentInParent<Survival.Views.Movement>()==null&&c.gameObject.layer!=UnityEngine.LayerMask.NameToLayer("Enemy")&&floors.Any(f=>c.bounds.max.x>f.bounds.min.x-.23f&&c.bounds.min.x<f.bounds.max.x+.23f&&c.bounds.max.z>f.bounds.min.z-.23f&&c.bounds.min.z<f.bounds.max.z+.23f)).ToArray();
+var parent=floors[0].transform.parent;
+return new{status="sampled",frame=UnityEngine.Time.frameCount,scene_handle=scene.handle,player=new[]{m.Position.x,m.Position.y,m.Position.z},deck_y=deck,
+parent=parent==null?null:new{id=parent.gameObject.GetInstanceID(),p=new[]{parent.position.x,parent.position.y,parent.position.z},r=new[]{parent.eulerAngles.x,parent.eulerAngles.y,parent.eulerAngles.z},s=new[]{parent.lossyScale.x,parent.lossyScale.y,parent.lossyScale.z}},
+foundations=floors.Select(c=>new{id=c.gameObject.GetInstanceID(),collider_id=c.GetInstanceID(),min=new[]{c.bounds.min.x,c.bounds.min.y,c.bounds.min.z},max=new[]{c.bounds.max.x,c.bounds.max.y,c.bounds.max.z},rotation=new[]{c.transform.eulerAngles.x,c.transform.eulerAngles.y,c.transform.eulerAngles.z}}).ToArray(),
+obstacles=obstacles.Select(c=>new{id=c.GetInstanceID(),min=new[]{c.bounds.min.x,c.bounds.min.y,c.bounds.min.z},max=new[]{c.bounds.max.x,c.bounds.max.y,c.bounds.max.z}}).ToArray(),
+controller=cc==null?null:new{radius=cc.radius,skin=cc.skinWidth,height=cc.height,scale=new[]{cc.transform.lossyScale.x,cc.transform.lossyScale.y,cc.transform.lossyScale.z}},snapshot_ms=timer.Elapsed.TotalMilliseconds};

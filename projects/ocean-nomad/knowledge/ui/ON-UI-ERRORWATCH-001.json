@@ -1,0 +1,90 @@
+{
+  "id": "ON-UI-ERRORWATCH-001",
+  "kind": "execution_policy",
+  "title": "Новая неожиданная красная ошибка останавливает UI-навык",
+  "game_id": "ocean-nomad",
+  "runtime": "UnityEditor",
+  "source": "human_user, 2026-10-22",
+  "status": "implemented_with_isolated_and_no_input_verification",
+  "default_policy": {
+    "observe": "Пассивное событие Application.logMessageReceivedThreaded; обычный снимок передаёт только сигнал и счётчики.",
+    "types": [
+      "Error",
+      "Exception",
+      "Assert"
+    ],
+    "on_unexpected": "Прервать навык, отменить отложенный ввод, получить только новые релевантные сообщения/стек и разобрать; автоматически не повторять действие.",
+    "old_errors": "На начале проверки устанавливается baseline, старые ошибки не вызывают остановку повторно.",
+    "warnings_and_logs": "Не вызывают остановку по умолчанию.",
+    "expected_errors": "Только явное предупреждение человека: буквальный фрагмент сообщения, причина и при необходимости этап. Только на данную сессию; finish очищает исключения.",
+    "known_bug_is_not_auto_exempt": true,
+    "known_ui_failure_remains_failure_even_when_error_expected": true
+  },
+  "implementation": {
+    "monitor": "tools/unity-ui/error-monitor.mjs",
+    "adapter": "tools/unity-ui/session.mjs",
+    "guarded_controllers": [
+      "projects/ocean-nomad/tools/fast-ui/skill.mjs",
+      "projects/ocean-nomad/tools/fast-ui/main-menu.mjs"
+    ],
+    "exploratory_control": "selected-control.cs.txt требует session.instrument(code); старые незащищённые helpers не использовать.",
+    "details": "session.errors.details()",
+    "unexpected_result": "NEEDS_REVIEW/new_unity_error",
+    "buffer_entries": 64,
+    "normal_snapshot_has_full_logs": false
+  },
+  "limits": [
+    "Пассивный слушатель живёт до domain reload/закрытия Unity; begin устанавливает его заново.",
+    "Модель получает сигнал в активном прогоне через инструмент; слушатель сам не будит неактивный чат.",
+    "Ошибка не отменяет уже выполненное нажатие; блокирует следующий ввод.",
+    "Не гарантируется получение всех диагностик компилятора/Editor через runtime-событие.",
+    "Старый исполнитель стартового входа/будущие адаптеры должны использовать такой же guard перед вводом; универсальной защиты любого произвольного MCP-кода нет."
+  ],
+  "verification": {
+    "unity_callback_self_test": {
+      "passed": true,
+      "ordinary_logs_ignored": true,
+      "expected_error_allowed": true,
+      "unexpected_error_blocks": true,
+      "expected_phase_enforced": true,
+      "bounded_buffer": true,
+      "isolated_callback_only": true,
+      "real_console_errors_emitted": 0,
+      "input_sent": false
+    },
+    "no_input_session": {
+      "available": true,
+      "epoch": "84b0b8bfd0d345c69fddd1277cdc1b83",
+      "armed": true,
+      "new_errors": 0,
+      "unexpected_new_errors": 0,
+      "blocked": false
+    },
+    "node_tests_passed": 19,
+    "full_live_error_interruption": "NOT_RUN: настоящую игровую ошибку при подготовке не вызывали",
+    "new_speed_benchmark": "NOT_RUN: прежние замеры до watcher"
+  },
+  "current_expected_errors": [],
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "episode": "2026-10-22T12-03-07-759Z",
+    "files": [
+      "isolated-callback-test.json",
+      "preparation.json",
+      "no-input-session.json",
+      "status-after-setup.json"
+    ]
+  },
+  "runtime_expectations": {
+    "source": "human_user",
+    "date": "2026-10-22",
+    "runtime": "UnityEditor",
+    "features": [
+      "login",
+      "restore_purchases"
+    ],
+    "expectation": "Авторизация и восстановление покупок в Editor недоступны; отсутствие этих функций ожидаемо и само по себе не является багом.",
+    "scope": "Только Unity Editor. Не игнорировать произвольные ошибки и ошибки открытия настроек.",
+    "error_filter_scope": "Ожидаемая недоступность функций не задаёт глобального исключения для всех сетевых, платёжных и VContainer-ошибок. Точные исключения сигналов задаются отдельно по контексту и сообщению."
+  }
+}

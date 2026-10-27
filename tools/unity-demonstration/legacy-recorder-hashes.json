@@ -1,0 +1,26 @@
+{
+  "schema": "qa-demo-legacy-hashes/1",
+  "files": {
+    "Runtime/DemoCapture.cs": [
+      "4fa40d55cf69d1c7a2536deb73c05b53456a6823620e3d2d8f73801853f46499"
+    ],
+    "Runtime/DemoEarlySampler.cs": [
+      "e06f966923decefaae09a37b5c976f51a03a7f2218118b37c847456a46830032"
+    ],
+    "Runtime/DemoLateSampler.cs": [
+      "04abecf41bd767ef8211682ddaa3789eb970ce2fb54604f6d833430c0c9ba13d"
+    ],
+    "Runtime/JournalWriter.cs": [
+      "d3fe7b9c50429353280eea82944e3fcf95cae54c82f11757da088a71810fb1f3"
+    ],
+    "Runtime/OceanNomadObservation.cs": [
+      "c598c03d907e48cd30e08442d82fc365add72a2e96d2030fea4df29ffe89af5c"
+    ],
+    "Editor/DemoRecorderWindow.cs": [
+      "b5e550950669fb32179a26919c4b09e6427e4c7e53e37d5ac75183eb1fb185ed"
+    ],
+    "Editor/DemoVideoSession.cs": [
+      "6f635396fcb0dc778adc6b06a7f51c156d9b10254dd435b4f9e0e6b6f7b0a1e7"
+    ]
+  }
+}

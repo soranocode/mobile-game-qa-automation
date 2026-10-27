@@ -1,0 +1,11 @@
+{
+  "name": "GameQA.Demonstrations.OceanNomad.Editor",
+  "rootNamespace": "QaDemonstrations",
+  "references": [
+    "GameQA.Demonstrations"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

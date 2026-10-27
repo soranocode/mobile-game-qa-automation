@@ -1,0 +1,249 @@
+// execute_code method body, C#6. Parameters are Editor SessionState data.
+// Only ordinary EventSystem pointer/drag events. Never writes actor/camera/game data.
+const string key = "QaAgent.AimHook.v1";
+var mode = UnityEditor.SessionState.GetString(key + ".mode", "snapshot");
+if (mode == "prepare") return new { status = "compiled_only", input_sent = false };
+__ERROR_WATCH_SETUP__
+var previous = System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if (mode == "snapshot") return previous == null ? (object)new { status = "idle" } : previous["result"];
+if (mode == "stop") {
+    if (previous != null && !(bool)previous["finished"]) ((System.Action)previous["cancel"])();
+    return previous == null ? (object)new { status = "idle" } : previous["result"];
+}
+if (mode != "aim" && mode != "collect") return new { status = "invalid_mode" };
+var priority=System.AppDomain.CurrentDomain.GetData("QaAgent.SharkDefense.v1") as System.Collections.Generic.Dictionary<string,object>;
+if(priority!=null&&(bool)priority["busy"])return new{status="preempted_shark"};
+if (previous != null && !(bool)previous["finished"]) return new { status = "already_running" };
+if (errorWatchBlocked()) return new { status = "blocked_new_error", error_watch = errorWatchSnapshot() };
+if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused ||
+    !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false)) return new { status = "not_active" };
+if (UnityEngine.Application.version != "2.11.0") return new { status = "unsupported_build" };
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var tests = UnityEngine.Resources.FindObjectsOfTypeAll<TestGUI>().Where(t => t != null && t.isActiveAndEnabled && t.gameObject.scene.IsValid()).ToArray();
+if (tests.Length != 1) return new { status = "ambiguous_testgui" };
+var test = tests[0];
+if ((bool)test.GetType().GetField("_isTest", flags).GetValue(test)) return new { status = "cheat_panel_open" };
+System.Func<bool> adVisible = () => UnityEngine.Resources.FindObjectsOfTypeAll<UnityEngine.MonoBehaviour>().Any(c => {
+    if (c == null || !c.isActiveAndEnabled || c.GetType().Namespace != "Unity.Services.LevelPlay") return false;
+    var field = c.GetType().GetField("m_Preview", flags);
+    return field != null && (bool)field.GetValue(c);
+});
+if (adVisible()) return new { status = "ad_overlay" };
+System.Func<bool> unexpectedWindow = () => UnityEngine.Resources.FindObjectsOfTypeAll<Acme.Gui.Abstractions.AbstractWindowPrefab>()
+    .Any(w => w != null && w.isActiveAndEnabled && w.gameObject.scene.IsValid() && w.GetType().FullName != "DamageShower.DamageShowView");
+if (unexpectedWindow()) return new { status = "ui_overlay" };
+var panels = ((System.Collections.IEnumerable)test.GetType().GetField("_activePanelList", flags).GetValue(test)).Cast<object>().ToArray();
+var managers = panels.Select(p => { var field = p.GetType().GetField("_questManager", flags); return field == null ? null : field.GetValue(p) as Quests.QuestManager; })
+    .Where(q => q != null).Distinct().ToArray();
+if (managers.Length != 1) return new { status = "quest_source_unknown" };
+var quest = managers[0].ActiveQuests.SingleOrDefault(q => q.Uid == "hook_use");
+var step = quest == null ? null : quest.StartedSteps.SingleOrDefault(s => s.Uid == "use_wooden_hook");
+if (step == null || step.IsComplete || step.Need != 3) return new { status = "no_active_hook_step" };
+var target = UnityEditor.EditorUtility.InstanceIDToObject(UnityEditor.SessionState.GetInt(key + ".target", 0)) as Survival.Components.PickableComponent;
+var allowed = new [] { "LogTutotial", "BoxTutorial", "BarrelTutorial" };
+if (target == null || !allowed.Contains(target.Uid) || target.IsTaken || !target.gameObject.activeInHierarchy) return new { status = "target_unavailable" };
+var movement = UnityEngine.Object.FindObjectOfType<Survival.Views.Movement>();
+var hud = UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+var es = UnityEngine.EventSystems.EventSystem.current;
+if (movement == null || hud == null || es == null || hud.LookTouchpad == null) return new { status = "input_source_unknown" };
+var button = hud.ActionButtons[0];
+var callback = button.GetType().GetField("_pressExtended", flags).GetValue(button) as System.Delegate;
+if (callback == null || callback.Target == null) return new { status = "action_source_unknown" };
+var manager = callback.Target;
+var activity = (Survival.Activities.ActivityController)manager.GetType().GetField("_activityController", flags).GetValue(manager);
+var hook = activity.CurrentActivity as Survival.Activities.Hook;
+var player = (Acme.Joys.JoysPlayer)manager.GetType().GetField("_player", flags).GetValue(manager);
+if (hook == null) return new { status = "wrong_activity", actual_activity = activity.CurrentActivity == null ? null : activity.CurrentActivity.GetType().Name };
+if (activity.IsUsing) return new { status = "hook_busy" };
+if (Survival.Windows.Panels.HudControlsManager.PlayerPosition.ToString() != "Anchor") return new { status = "not_on_raft" };
+var ballistic = UnityEditor.SessionState.GetString(key + ".trajectory", "direct") == "ballistic";
+var drawer = (Survival.Drawers.HookDrawer)hook.GetType().GetField("_hook", flags).GetValue(hook);
+var hand = drawer.GetType().GetField("_hand", flags).GetValue(drawer) as UnityEngine.Transform;
+var gravity = (float)drawer.GetType().GetField("_gravity", flags).GetValue(drawer);
+var speed = (float)drawer.GetType().GetField("_speed", flags).GetValue(drawer);
+var throwCoefficient = (Skills.SkillEffects.SkillEffectsManager.GetSkillEffectCoefFromDictionary(Skills.Data.SkillEffectType.ThrowHook) - 1) * .66f + 1;
+var dropSpeed = drawer.DropSpeed;
+var launchSpeedSquared = speed * speed * throwCoefficient * throwCoefficient * (dropSpeed * dropSpeed + .0625f);
+if (hand == null || gravity <= 0 || launchSpeedSquared <= 0 || dropSpeed <= 0) return new { status = "throw_model_unknown" };
+var touch = hud.LookTouchpad;
+var padScale = (float)touch.GetType().GetField("_sens", flags).GetValue(touch);
+if (padScale <= 0 || player.Sensitivity <= 0) return new { status = "invalid_sensitivity" };
+var baseGain = padScale * player.Sensitivity;
+var view = UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().FirstOrDefault(w => w.GetType().Name == "GameView");
+if (view == null) return new { status = "game_view_missing" };
+view.Focus(); view.Repaint();
+System.Func<UnityEngine.Component, UnityEngine.Vector2> screenCenter = component => {
+    var rect = component.GetComponent<UnityEngine.RectTransform>();
+    var canvas = component.GetComponentInParent<UnityEngine.Canvas>();
+    var camera = canvas.renderMode == UnityEngine.RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+    return UnityEngine.RectTransformUtility.WorldToScreenPoint(camera, rect.TransformPoint(rect.rect.center));
+};
+var point = screenCenter(touch);
+var pointer = new UnityEngine.EventSystems.PointerEventData(es) { position = point, pressPosition = point, button = UnityEngine.EventSystems.PointerEventData.InputButton.Left,
+    pointerId = -73, dragging = true, useDragThreshold = false, pointerDrag = touch.gameObject };
+var hits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>(); es.RaycastAll(pointer, hits);
+if (hits.Count == 0 || UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IDragHandler>(hits[0].gameObject) != touch.gameObject)
+    return new { status = "look_covered" };
+pointer.pointerCurrentRaycast = hits[0]; pointer.pointerPressRaycast = hits[0];
+var initialPosition = movement.Position;
+var scene = movement.gameObject.scene.handle;
+var generation = UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0);
+var allTargets = UnityEngine.Resources.FindObjectsOfTypeAll<Survival.Components.PickableComponent>()
+    .Where(p => p != null && p.gameObject.scene.handle == scene && allowed.Contains(p.Uid) && p.gameObject.activeInHierarchy && !p.IsTaken).ToArray();
+var targetMetadata = allTargets.Select(p => new { id = p.GetInstanceID(), uid = p.Uid, reference = p }).ToArray();
+var baseline = step.Value;
+var began = UnityEditor.EditorApplication.timeSinceStartup;
+var phase = "aim";
+bool finished = false, dragging = false, down = false, up = false, throwObserved = false, throwResult = false, sawUsing = false;
+int ticks = 0, settleFrames = 0, stableFrames = 0, aimFrames = 0, clickFrame = -1;
+int corrections = 0;
+float lastYaw = movement.Yaw, lastPitch = movement.Pitch, lastDx = 0, lastDy = 0;
+float gainX = baseGain, gainY = baseGain;
+var yawError = 0f; var pitchError = 0f;
+var history = new System.Collections.Generic.List<object>();
+string lastCollision = null;
+double clickAt = -1;
+UnityEngine.EventSystems.PointerEventData buttonPointer = null;
+UnityEditor.EditorApplication.CallbackFunction watchdog = null;
+var state = new System.Collections.Generic.Dictionary<string,object> { {"finished", false}, {"result", new { status = "running", phase = phase }} };
+System.AppDomain.CurrentDomain.SetData(key, state);
+System.Action releaseLook = () => {
+    pointer.delta = UnityEngine.Vector2.zero;
+    if (dragging && touch != null) UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.endDragHandler);
+    dragging = false;
+};
+System.Action releaseButton = () => {
+    if (down && !up && button != null && buttonPointer != null) {
+        UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject, buttonPointer, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+        up = true;
+    }
+};
+System.Action<bool> onThrow = value => { throwObserved = true; throwResult = value; };
+System.Action<double, UnityEngine.Collider> onCollision = (distance, hit) => { lastCollision = hit == null ? null : hit.name + ":" + hit.tag; };
+hook.OnThrowResult += onThrow;
+drawer.OnCollide += onCollision;
+System.Action<string> finish = outcome => {
+    if (finished) return;
+    finished = true;
+    releaseLook(); releaseButton();
+    hook.OnThrowResult -= onThrow;
+    drawer.OnCollide -= onCollision;
+    if (watchdog != null) UnityEditor.EditorApplication.update -= watchdog;
+    var collected = allTargets.Where(p => p == null || p.IsTaken).Select(p => p == null ? "destroyed_observed_instance" : p.Uid).ToArray();
+    state["finished"] = true;
+    state["result"] = new { status = outcome, intended_uid = target == null ? null : target.Uid, intended_instance = target == null ? 0 : target.GetInstanceID(),
+        progress_before = baseline, progress_after = step.Value, need = step.Need, step_complete = step.IsComplete,
+        collected_uids = collected, click_sent = down, pointer_released = !down || up,
+        collected_targets = targetMetadata.Where(t => t.reference == null || t.reference.IsTaken).Select(t => new { instance_id = t.id, uid = t.uid }).ToArray(),
+        yaw_error = yawError, pitch_error = pitchError, correction_frames = corrections, game_frames = ticks,
+        collision = lastCollision, throw_observed = throwObserved, throw_success = throwResult, saw_using = sawUsing,
+        click_seconds = clickAt < 0 ? -1 : Math.Round(clickAt - began, 3),
+        result_wait_seconds = clickAt < 0 ? 0 : Math.Round(UnityEditor.EditorApplication.timeSinceStartup - clickAt, 3),
+        trajectory = ballistic ? "ballistic" : "direct",
+        elapsed_seconds = Math.Round(UnityEditor.EditorApplication.timeSinceStartup - began, 3), history = history.ToArray(), error_watch = errorWatchSnapshot() };
+};
+state["cancel"] = (System.Action)(() => finish("cancelled"));
+System.Func<string> interruption = () => {
+    if (errorWatchBlocked()) return "blocked_new_error";
+    if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused || !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false) ||
+        generation != UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0)) return "cancelled";
+    if (movement == null || touch == null || button == null || movement.gameObject.scene.handle != scene) return "scene_changed";
+    if (UnityEngine.Vector3.Distance(initialPosition, movement.Position) > .25f) return "player_moved";
+    if (UnityEditor.EditorApplication.timeSinceStartup - began > 12) return "timeout";
+    return null;
+};
+watchdog = () => {
+    if (finished) return;
+    var reason = interruption();
+    if (reason != null) { finish(reason); return; }
+    UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+    if (view != null) view.Repaint();
+};
+UnityEditor.EditorApplication.update += watchdog;
+System.Action tick = () => {
+    if (finished) return;
+    ticks++;
+    var reason = interruption(); if (reason != null) { finish(reason); return; }
+    if (phase == "wait_result") {
+        sawUsing = sawUsing || activity.IsUsing;
+        if (step.Value > baseline && (throwObserved && throwResult || allTargets.Any(p => p == null || p.IsTaken))) { finish("collected"); return; }
+        if (throwObserved && !throwResult && !activity.IsUsing) { finish("miss"); return; }
+        if (!activity.IsUsing && UnityEditor.EditorApplication.timeSinceStartup - clickAt > .5) { finish(throwObserved && throwResult ? "other_item_collected" : sawUsing ? "miss_without_result_event" : "click_no_action"); return; }
+        return;
+    }
+    if (phase == "release_button") { releaseButton(); phase = "wait_result"; return; }
+    if (adVisible()) { finish("ad_overlay"); return; }
+    if (unexpectedWindow() || (bool)test.GetType().GetField("_isTest", flags).GetValue(test)) { finish("ui_overlay"); return; }
+    if (target == null || target.IsTaken || !target.gameObject.activeInHierarchy) { finish("target_changed"); return; }
+    if ((bool)movement.GetType().GetField("_isRotaion", flags).GetValue(movement)) return;
+    var collider = target.GetComponentInChildren<UnityEngine.Collider>();
+    var aim = collider != null && collider.enabled && collider.gameObject.activeInHierarchy ? collider.bounds.center : target.transform.position;
+    var vector = aim - movement.CameraPosition;
+    if (vector.magnitude > 12 || vector.magnitude < .1f) { finish("range_outside_skill"); return; }
+    var forward = movement.CameraForward.normalized;
+    yawError = UnityEngine.Vector3.SignedAngle(UnityEngine.Vector3.ProjectOnPlane(forward, UnityEngine.Vector3.up), UnityEngine.Vector3.ProjectOnPlane(vector, UnityEngine.Vector3.up), UnityEngine.Vector3.up);
+    pitchError = Mathf.Atan2(vector.y, new UnityEngine.Vector2(vector.x, vector.z).magnitude) * Mathf.Rad2Deg - Mathf.Asin(Mathf.Clamp(forward.y,-1,1)) * Mathf.Rad2Deg;
+    if (ballistic) {
+        var fromHand = aim - hand.position;
+        var horizontal = new UnityEngine.Vector2(fromHand.x, fromHand.z).magnitude;
+        var discriminant = launchSpeedSquared * launchSpeedSquared - gravity * (gravity * horizontal * horizontal + 2 * fromHand.y * launchSpeedSquared);
+        if (horizontal < .1f || discriminant < 0) { finish("no_ballistic_solution"); return; }
+        var launchElevation = Mathf.Atan((launchSpeedSquared - Mathf.Sqrt(discriminant)) / (gravity * horizontal));
+        var desiredElevation = launchElevation - Mathf.Atan2(.25f, dropSpeed);
+        pitchError = desiredElevation * Mathf.Rad2Deg - Mathf.Asin(Mathf.Clamp(forward.y,-1,1)) * Mathf.Rad2Deg;
+    }
+    var yawMotion = Mathf.DeltaAngle(lastYaw, movement.Yaw); var pitchMotion = movement.Pitch - lastPitch;
+    if (phase == "settle") {
+        settleFrames++;
+        stableFrames = Mathf.Abs(yawMotion) < .05f && Mathf.Abs(pitchMotion) < .05f ? stableFrames + 1 : 0;
+        lastYaw = movement.Yaw; lastPitch = movement.Pitch;
+        if (settleFrames < 3 || stableFrames < 2) return;
+        if (Mathf.Abs(yawError) > 1.5f || Mathf.Abs(pitchError) > 1.5f) { phase = "aim"; settleFrames = 0; stableFrames = 0; }
+        else {
+            if (mode == "aim") { finish("aimed"); return; }
+            if (activity.CurrentActivity != hook || activity.IsUsing) { finish("action_changed"); return; }
+            if (Survival.Drawers.ArmsDrawer.IsAnimate || button.BlockButton) return;
+            var bp = screenCenter(button);
+            buttonPointer = new UnityEngine.EventSystems.PointerEventData(es) { position = bp, pressPosition = bp, button = UnityEngine.EventSystems.PointerEventData.InputButton.Left,
+                pointerId = -74, eligibleForClick = true, clickCount = 1, clickTime = UnityEngine.Time.unscaledTime };
+            var buttonHits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>(); es.RaycastAll(buttonPointer, buttonHits);
+            if (buttonHits.Count == 0 || !buttonHits[0].gameObject.transform.IsChildOf(button.transform)) { finish("action_covered"); return; }
+            buttonPointer.pointerCurrentRaycast = buttonHits[0]; buttonPointer.pointerPressRaycast = buttonHits[0];
+            buttonPointer.pointerPress = button.gameObject; buttonPointer.rawPointerPress = buttonHits[0].gameObject;
+            down = true; clickFrame = UnityEngine.Time.frameCount; clickAt = UnityEditor.EditorApplication.timeSinceStartup;
+            history.Add(new { phase = "click", frame = clickFrame, seconds = Math.Round(clickAt - began,3), yaw = yawError, pitch = pitchError });
+            UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject, buttonPointer, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+            sawUsing = activity.IsUsing;
+            phase = "release_button";
+            return;
+        }
+    }
+    if (phase == "aim") {
+        aimFrames++;
+        if (aimFrames > 120) { finish("aim_not_converging"); return; }
+        if (Mathf.Abs(lastDx) > 1 && Mathf.Abs(yawMotion) > .01f) gainX = Mathf.Clamp(Mathf.Abs(yawMotion / lastDx), baseGain * .25f, baseGain * 8);
+        if (Mathf.Abs(lastDy) > 1 && Mathf.Abs(pitchMotion) > .01f) gainY = Mathf.Clamp(Mathf.Abs(pitchMotion / lastDy), baseGain * .25f, baseGain * 8);
+        lastYaw = movement.Yaw; lastPitch = movement.Pitch;
+        if (Mathf.Abs(yawError) < .7f && Mathf.Abs(pitchError) < .7f) {
+            releaseLook(); phase = "settle"; lastDx = 0; lastDy = 0; return;
+        }
+        lastDx = Mathf.Clamp(yawError * .65f / gainX, -120,120);
+        lastDy = Mathf.Clamp(pitchError * .65f / gainY, -120,120);
+        pointer.delta = new UnityEngine.Vector2(lastDx,lastDy); pointer.position += pointer.delta;
+        if (!dragging) {
+            UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.initializePotentialDrag);
+            UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.beginDragHandler);
+            dragging = true;
+        }
+        UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.dragHandler);
+        corrections++;
+        if (history.Count < 40) history.Add(new { phase = "look", frame = UnityEngine.Time.frameCount, yaw = yawError, pitch = pitchError, dx = lastDx, dy = lastDy });
+    }
+    state["result"] = new { status = "running", phase = phase, game_frames = ticks, progress_before = baseline, progress_now = step.Value };
+};
+// Every control/measurement happens after a completed game frame, never on an Editor wall-clock tick.
+es.StartCoroutine(Enumerable.Range(0, 1200).TakeWhile(i => !finished).Select(i => {
+    if (i > 0) { try { tick(); } catch (System.Exception ex) { history.Add(new { exception = ex.GetType().Name, message = ex.Message }); finish("executor_exception"); } }
+    return (object)new UnityEngine.WaitForEndOfFrame();
+}).GetEnumerator());
+return new { status = "running", selected_uid = target.Uid, selected_instance = target.GetInstanceID(), mode = mode };
