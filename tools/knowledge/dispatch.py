@@ -21,6 +21,13 @@ def encoded(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
+def execution_roles(memory_specialist):
+    return {"coordinator": "ocean-coordinator", "executor": "ocean-mcp-executor",
+            "separate_executor_required": True, "coordinator_may_call_unity": False,
+            "memory_specialist": memory_specialist, "memory_specialist_launch_required": False,
+            "executor_policy": "Create or reuse one separate executor for the whole authorized sequence; not one per click or mission"}
+
+
 def repository_path(relative, repo=REPO):
     path = Path(relative)
     if path.is_absolute() or ".." in path.parts or "\\" in relative:
@@ -99,6 +106,7 @@ def make_packet(name, mission, contract, records, *, repo=REPO, knowledge_root=K
                 "execution_authorized": False, "packet": None}
     packet = {
         "schema": "ocean-task-packet/1", "task": name, "agent": mission["agent"],
+        "execution_roles": execution_roles(mission["agent"]),
         "scope": contract["scope"], "global_rules": contract["global_rules"],
         "live_context_required": contract["live_context_required"],
         "invalidate_active_plan_on": contract["invalidate_active_plan_on"],
@@ -185,8 +193,8 @@ def main(argv=None):
         result = cache_packet(result)
     if not args.packet:
         result.pop("packet", None)
-    result["agent_launch_required"] = False
-    result["handoff"] = "Reuse the packet for known execution; spawn one fresh specialist only for planning/review."
+    result["execution_roles"] = execution_roles(registry["missions"][name]["agent"])
+    result["handoff"] = "Coordinator delegates Unity access to one separate ocean-mcp-executor. The agent field names a memory specialist; a ready packet needs no extra memory specialist. No gameplay authorization is granted."
     return result
 
 

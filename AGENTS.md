@@ -37,8 +37,10 @@ The active direction is Ocean Nomad automation in Unity Editor on the PC. Learne
 
 ## Task-scoped agents
 
-- Coordinator selects one task packet. Use one fresh specialist without parent history only for preparation or a concrete knowledge gap; do not launch every role or delegate per click. Known packets may be used directly without another model turn.
+- In multi-agent Unity QA the parent chat is the coordinator; Unity access belongs to one separate ocean-mcp-executor agent. Coordinator must not connect to Unity, call Unity MCP even for observation, warm commands or invoke the live runtime itself. Delegate the whole scoped sequence once, then prepare following packets offline in parallel. If delegation is unavailable, report the blocker; do not silently combine roles.
+- Create/reuse one executor for the requested series, with its own persistent runtime. Do not create an executor per click or known mission. Known packets need no extra mission specialist or model turn between actions. Use a fresh read-only specialist without parent history only for preparation or a concrete knowledge gap.
 - Memory workers receive only current goal, reviewed packet and relevant current constraints; no README/CURRENT/archive reading unless the packet explicitly reports a missing source. Return at most 1600 characters and exact missing IDs.
 - One designated executor owns all Unity input. Cache static knowledge and warmed command handlers, never authorization, runtime positions, error exceptions or old completion.
+- Use brain/agents/ROLE_HANDOFF.md for task/stop/result transfer. Stop and cleanup go to the existing executor; do not take over its connection. Architecture edits and offline fake-transport checks do not authorize gameplay.
 - Stop/invalidate on user stop, source/Unity epoch/context changes, unexpected errors or unknown input outcome. Do not truncate critical constraints to meet a context budget.
 - Definitions: `.codex/agents/`; Cursor bridge: `.cursor/agents/ocean-memory.md`. Detailed setup/limits: `brain/agents/PROTOCOL.md` (read for setup, not each familiar action).

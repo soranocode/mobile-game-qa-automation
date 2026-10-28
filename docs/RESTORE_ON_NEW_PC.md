@@ -58,6 +58,8 @@ python tools/portable/verify_offline.py
 
 Новый Codex начинает с `AGENTS.md` и `docs/AGENT_HANDOFF.md`. После явного запроса подключиться к редактору один раз создаёт runtime в постоянном Node REPL:
 
+Все вызовы подключения, наблюдения и runtime ниже выполняет отдельный `ocean-mcp-executor`. Родительский чат остаётся координатором и передаёт ему текущую задачу; сам не обращается к Unity. Способ создания/повторного использования агента и передачи профиля — `brain/agents/ROLE_HANDOFF.md`.
+
 ```js
 var {pathToFileURL} = await import('node:url');
 var portable = await import(pathToFileURL(ABSOLUTE_REPO_PATH + '/tools/portable/runtime.mjs').href);

@@ -104,6 +104,25 @@ class PacketTests(unittest.TestCase):
         self.assertNotIn(str(self.repo), json.dumps(packet))
         self.assertIn("session epoch", packet["live_context_required"])
 
+    def test_ready_memory_does_not_remove_the_separate_executor(self):
+        roles = self.build()["packet"]["execution_roles"]
+        self.assertEqual(roles["executor"], "ocean-mcp-executor")
+        self.assertEqual(roles["memory_specialist"], "ocean-quests")
+        self.assertTrue(roles["separate_executor_required"])
+        self.assertFalse(roles["coordinator_may_call_unity"])
+        self.assertFalse(roles["memory_specialist_launch_required"])
+
+    def test_cli_handoff_distinguishes_memory_specialist_from_executor(self):
+        registry = {"missions": {"hook_use": {**self.mission, "aliases": []}}}
+        packet = self.build()
+        with patch.object(dispatch, "load_registry", return_value=(registry, self.contract, self.records)), \
+             patch.object(dispatch, "make_packet", return_value=packet):
+            result = dispatch.main(["hook_use"])
+        self.assertNotIn("agent_launch_required", result)
+        self.assertTrue(result["execution_roles"]["separate_executor_required"])
+        self.assertFalse(result["execution_authorized"])
+        self.assertIn("one separate ocean-mcp-executor", result["handoff"])
+
     def test_guard_change_changes_revision(self):
         before = self.build()["revision"]
         changed = copy.deepcopy(self.contract)
@@ -170,7 +189,7 @@ class RealRegistryTests(unittest.TestCase):
 
     def test_agent_configs_have_no_model_or_permission_override(self):
         paths = list((dispatch.REPO / ".codex/agents").glob("ocean-*.toml"))
-        self.assertEqual(len(paths), 6)
+        self.assertEqual(len(paths), 7)
         for path in paths:
             agent = tomllib.loads(path.read_text(encoding="utf-8"))
             self.assertTrue(all(agent.get(key) for key in ["name", "description", "developer_instructions"]))

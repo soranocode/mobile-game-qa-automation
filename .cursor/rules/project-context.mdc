@@ -10,3 +10,7 @@ The human has entered the Unity Editor practical stage. Follow the latest
 requested subtask; planning/documentation does not start another gameplay run.
 Use project plans in projects/ and shared instructions in docs/.
 Keep local evidence and credentials out of Git. Coordinate edits with other agents.
+In multi-agent Unity QA, the parent is coordinator and delegates all Unity access
+to one separate ocean-mcp-executor. The coordinator prepares the queue offline;
+it must not open the live runtime or call Unity MCP itself. Use
+brain/agents/ROLE_HANDOFF.md.
