@@ -43,6 +43,23 @@ def main():
         path = output / Path(name).name.replace(".txt", "")
         path.write_text(text, encoding="utf-8")
         sources.append(path)
+    # Compile the same fixed lifecycle commands that will hold the error watcher
+    # across mission boundaries. Importing this JS module never connects to Unity.
+    node = shutil.which('node')
+    if not node:
+        raise ValueError('Node is required to load the cycle lifecycle commands')
+    module_url = (repo / 'tools/unity-ui/session.mjs').as_uri()
+    script = ('import {cycleLifecycleCommands} from ' + json.dumps(module_url) + ';'
+              'process.stdout.write(JSON.stringify(cycleLifecycleCommands()));')
+    loaded = subprocess.run([node, '--input-type=module', '-e', script], check=True,
+                            capture_output=True, text=True, encoding='utf-8')
+    lifecycle = json.loads(loaded.stdout)
+    for number, body in enumerate(lifecycle):
+        path = output / ('cycle-lifecycle-' + str(number) + '.cs')
+        text = ('using System;using System.Linq;using UnityEngine;using UnityEditor;public class CycleCompile' +
+                str(number) + ' {public object Execute(){' + body + '}}')
+        path.write_text(text, encoding='utf-8')
+        sources.append(path)
     response = output / "compile.rsp"
     lines = ["/nologo", "/target:library", "/nostdlib+", "/langversion:6",
              '/out:"' + str(output / "prepared-quest-commands.dll") + '"']

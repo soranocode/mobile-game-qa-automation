@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {isAbsolute,join} from 'node:path';
-import {prepareSelectedMissions} from './catalog.mjs';
+import {prepareSelectedMissions,executePreparedPipeline} from './catalog.mjs';
 import {MissionPool} from './mission-pool.mjs';
 
 test('selected missions prepare once each on the same executor and distinct parameter files',async()=>{
@@ -20,4 +20,8 @@ test('unknown mission rejects the whole preparation before touching the first fa
   await assert.rejects(prepareSelectedMissions({tasks:[{mission:'intro',epoch:'e',revision:'r'},{mission:'not-known',epoch:'e',revision:'r'}],
     session:{},parameterDirectory:join(import.meta.dirname,'local-parameters'),pool:new MissionPool(),factories:{intro:async()=>{calls.push(1);}}}),/Unsupported/);
   assert.equal(calls.length,0);
+});
+
+test('public pipeline entry rejects missing live ownership and observation adapters',()=>{
+  assert.throws(()=>executePreparedPipeline({pool:new MissionPool(),tasks:[],authorized:true}),/portable runtime/);
 });

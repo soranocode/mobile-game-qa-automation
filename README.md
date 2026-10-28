@@ -20,7 +20,7 @@ python tools/portable/bootstrap.py check
 
 - `projects/ocean-nomad/knowledge/` — индекс и тематические карточки с источниками, статусами и ограничениями.
 - `projects/ocean-nomad/tools/` — повторно используемые UI, пространственные и боевые действия.
-- `tools/agent-runtime/` — подготовленные обработчики миссий, пул и каталог последовательного запуска.
+- `tools/agent-runtime/` — подготовленные обработчики миссий, пул, очередь с параллельной подготовкой пакетов и итоговый анализ.
 - `tools/unity-ui/`, `tools/unity-entry/` — транспорт, сессия, наблюдение ошибок и примитивы входа.
 - `packages/com.gameqa.demonstrations/` — отдельный расширяемый Unity пакет записи видео, действий и телеметрии.
 - `.codex/agents/`, `.cursor/agents/`, `.cursor/rules/` — роли и проектные правила; общий опыт хранится в файлах.
@@ -39,6 +39,8 @@ python tools/portable/bootstrap.py check
 Для знакомой задачи: `python tools/knowledge/dispatch.py TASK --prepare`. Это короткая память, без игрового ввода. Новый процесс исполнителя поднимается через `tools/portable/runtime.mjs#openRuntime`; известные повторы используют `getRuntime()` и готовые handlers. Один исполнитель владеет Unity.
 
 Инструкции: [последовательный онборд](brain/agents/ONBOARDING_RUN.md), [протокол ролей](brain/agents/PROTOCOL.md), [пополнение знаний](brain/KNOWLEDGE_WORKFLOW.md), [проверенные ограничения](tools/agent-runtime/PREPARED_MISSIONS.md).
+
+С 28.10 `qa.runPipeline` готовит следующие два пакета во время текущей миссии, сохраняет одного владельца ввода и наблюдателя ошибок между миссиями. Телеметрия собирается в процессе; общий анализ и предложения знаний формируются после цикла. Подробности — [конвейер](brain/agents/PIPELINE.md). Обвязка проверена офлайн; её скорость в реальной игре ещё не измерялась.
 
 ## Проверки без игры
 

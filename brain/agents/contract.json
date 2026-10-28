@@ -1,8 +1,22 @@
 {
   "schema": "ocean-agent-contract/1",
-  "scope": {"game": "Ocean Nomad", "build": "2.11.0 dev", "runtime": "Unity Editor 6000.0.66f2", "device_testing": false},
-  "specialists": ["ocean-ui", "ocean-quests", "ocean-navigation", "ocean-combat"],
-  "limits": {"max_cards": 6, "max_packet_chars": 12000, "max_reply_chars": 1600},
+  "scope": {
+    "game": "Ocean Nomad",
+    "build": "2.11.0 dev",
+    "runtime": "Unity Editor 6000.0.66f2",
+    "device_testing": false
+  },
+  "specialists": [
+    "ocean-ui",
+    "ocean-quests",
+    "ocean-navigation",
+    "ocean-combat"
+  ],
+  "limits": {
+    "max_cards": 6,
+    "max_packet_chars": 12000,
+    "max_reply_chars": 1600
+  },
   "global_rules": [
     "Один назначенный исполнитель владеет вводом Unity. Специалисты памяти не вызывают MCP, не играют и не запускают других агентов.",
     "Пакет знаний и архив не дают разрешения действовать. Нужны актуальная задача человека и применимые явные разрешения; стоп отменяет оставшийся ввод.",
@@ -11,8 +25,24 @@
     "Новая неожиданная красная ошибка, неизвестное окно, потеря контекста или неизвестный исход ввода останавливают навык. Исключения ошибок действуют только по явному условию человека.",
     "Знакомые действия выполняются готовым ограниченным навыком. Не обращаться к модели или всей памяти между наведением и взаимодействием.",
     "Известную задержку обрабатывать ограниченным ожиданием/повтором по контракту; не повторять слепо уже отправленное разрушительное действие.",
-    "Перед повтором получить свежие runtime ID и координаты. Не кешировать авторизацию, позиции, результат прошлой попытки, сессию ошибок или удержание ввода."
+    "Перед повтором получить свежие runtime ID и координаты. Не кешировать авторизацию, позиции, результат прошлой попытки, сессию ошибок или удержание ввода.",
+    "В составном прогоне команды Unity прогреваются до старта; параллельно текущей миссии готовятся только пакеты следующих задач без MCP. Версии фиксированы; аналитика и предложения знаний финализируются после цикла без правок активной памяти."
   ],
-  "live_context_required": ["fresh user task", "project and build compatibility", "Unity session/domain epoch", "scene and world instance", "control and observation profiles", "fresh relevant state"],
-  "invalidate_active_plan_on": ["user stop", "domain reload or connection uncertainty", "scene/world or geometry change", "goal/step/equipment change", "new threat or unexpected error", "lost progress or unknown object", "source revision changed"]
+  "live_context_required": [
+    "fresh user task",
+    "project and build compatibility",
+    "Unity session/domain epoch",
+    "scene and world instance",
+    "control and observation profiles",
+    "fresh relevant state"
+  ],
+  "invalidate_active_plan_on": [
+    "user stop",
+    "domain reload or connection uncertainty",
+    "scene/world or geometry change",
+    "goal/step/equipment change",
+    "new threat or unexpected error",
+    "lost progress or unknown object",
+    "source revision changed"
+  ]
 }

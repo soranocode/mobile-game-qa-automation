@@ -1,6 +1,6 @@
 {
   "schema": "ocean-qa-portable-release/1",
-  "updated_at": "2026-10-27",
+  "updated_at": "2026-10-28",
   "scope": "Unity Editor autotests",
   "tested_environment": {
     "unity": "6000.0.66f2",
@@ -33,7 +33,11 @@
     "projects/ocean-nomad/tools/shark-defense/install.mjs",
     "packages/com.gameqa.demonstrations/package.json",
     ".codex/agents/ocean-mcp-executor.toml",
-    ".cursor/agents/ocean-memory.md"
+    ".cursor/agents/ocean-memory.md",
+    "brain/agents/PIPELINE.md",
+    "tools/agent-runtime/pipeline.mjs",
+    "tools/agent-runtime/cycle-journal.mjs",
+    "tools/agent-runtime/cycle-analysis.mjs"
   ],
   "runtime_preparation_required": true,
   "execution_authorized": false

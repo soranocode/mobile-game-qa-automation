@@ -30,7 +30,8 @@ export class SettingsAdapter {
     this.prepared=false;
   }
   async prepare() {
-    if(this.session.active)throw Error('Prepare before starting the UI session');
+    this.session.assertOwner?.();
+    if(this.session.active||this.session.cycleActive)throw Error('Prepare before starting the UI session');
     // One fixed parameter file per local controller. Runtime values never become new C# source.
     await writeFile(this.parameterFile,TARGETS.close_settings+'\n0.5','utf8');
     const setup=`UnityEditor.SessionState.SetBool("QaAgent.FastUi.warmup", true);

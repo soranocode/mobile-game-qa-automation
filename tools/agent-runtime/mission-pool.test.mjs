@@ -54,3 +54,21 @@ test('new revision replaces old closures and invalidation clears warmth',async()
   await pool.prepare({...key,factory});await pool.prepare({...key,revision:'revision-2',factory});
   assert.equal(pool.prepared.size,1);pool.invalidate();assert.equal(pool.prepared.size,0);
 });
+
+test('a cycle lease survives the end of run until cancellation cleanup settles',async()=>{
+  const pool=new MissionPool();let ended,cancelled;
+  const runEnd=new Promise(resolve=>{ended=resolve;}),cancelEnd=new Promise(resolve=>{cancelled=resolve;});
+  await pool.prepare({...key,factory:async()=>({run:async()=>{await runEnd;return{};},cancel:()=>cancelEnd})});
+  const lease=pool.acquireCycle('cycle');const run=pool.run({...request,lease:lease.token});
+  const stop=pool.stop();ended();await Promise.resolve();await Promise.resolve();
+  assert.notEqual(pool.active,null);assert.throws(()=>pool.releaseCycle(lease.token),/cleanup/);
+  cancelled();await stop;await run;pool.releaseCycle(lease.token);
+  await assert.rejects(pool.run({...request,lease:lease.token}),/expired/);
+});
+
+test('a failed handler is cancelled before its input lease is released',async()=>{
+  const pool=new MissionPool();let cancelled=0;
+  await pool.prepare({...key,factory:async()=>({run:async()=>{throw Error('unknown transport outcome');},cancel:async()=>{assert.notEqual(pool.active,null);cancelled++;}})});
+  await assert.rejects(pool.run(request),/unknown transport outcome/);
+  assert.equal(cancelled,1);assert.equal(pool.active,null);
+});

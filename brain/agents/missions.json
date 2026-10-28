@@ -32,7 +32,11 @@
         "tools/unity-ui/error-monitor.mjs",
         "tools/agent-runtime/hook-runner.mjs",
         "tools/agent-runtime/mission-pool.mjs",
-        "tools/agent-runtime/catalog.mjs"
+        "tools/agent-runtime/catalog.mjs",
+        "tools/agent-runtime/pipeline.mjs",
+        "tools/agent-runtime/cycle-journal.mjs",
+        "tools/agent-runtime/cycle-analysis.mjs",
+        "tools/portable/runtime.mjs"
       ],
       "reviewed_sha256": {
         "ON-SPATIAL-HOOK-COLLECT-001": "0c5c30597ccdbef97e3d3e7c27424285d59d5e0d30ff0819f8550d7a3ad54d05",
@@ -50,11 +54,15 @@
         "projects/ocean-nomad/tools/fast-spatial/quest-click-frame.cs.txt": "322114c2912703488e7252a559fb963c16600c2bdfe38fea216990a9b31a4465",
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
         "projects/ocean-nomad/tools/fast-spatial/hook-observer.cs.txt": "afa5e97f43c747772f1ab5bdad04ba3b9b541c1b791b329586b7659129f75075",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
         "tools/agent-runtime/hook-runner.mjs": "a7883056b745ea9654cbafeefe24dc34d1235f1a11061117833c9cd5894591c3",
-        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
-        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+        "tools/agent-runtime/mission-pool.mjs": "e012608659eee37536ed0194a011184edff6a521db146767d2db6d77f71aad32",
+        "tools/agent-runtime/catalog.mjs": "aab2f2579a2f0efbcd6f83cfd162e1eb3f7c219d7d71729cd87411a82cc9cafd",
+        "tools/agent-runtime/pipeline.mjs": "3134529a3c4b4662a25dcb9ffebcae3e881ee68a236347ddc9bf1dce3adb157b",
+        "tools/agent-runtime/cycle-journal.mjs": "5013056d4d5175bcb2fe2efb10b1a38123c164a45ae6d29ba0e14791a9e9d630",
+        "tools/agent-runtime/cycle-analysis.mjs": "8a9457be96e8d888acc600b0a89c7ee1cf36222087e702fa2f3a96a815c9f6aa",
+        "tools/portable/runtime.mjs": "6b937977cc45b544ec20ba72a3de7ebd7ecd1813e5e621374422d1a008cffc8e"
       },
       "brief": {
         "goal": "Завершить hook_use свежим use_wooden_hook 3/3 обычным крюком.",
@@ -85,7 +93,7 @@
           "Не добавлять второе смещение влево: selected-control.cs.txt уже выбирает левую область кнопки.",
           "Пакет не содержит старые координаты, полные логи или сценарии настроек/боя."
         ],
-        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "coordinator_call": "Use portable runtime.prepareMissions before the cycle, then runtime.runPipeline with the selected mission list and fresh user task. Offline lookahead prepares the next two packets; one executor retains input and error watch until cycle cleanup. See brain/agents/PIPELINE.md. This orchestration is offline verified; live timing is pending.",
         "group": "onboarding"
       },
       "preparation_entry_point": "tools/agent-runtime/hook-runner.mjs#prepareHookMission"
@@ -117,10 +125,10 @@
         "ON-UI-SKILLS-001": "4f5d4c6944f1f3b8acef5d1082fda3e7e613d93e6af19cbcc31dd5cefd84f048",
         "ON-UI-ERRORWATCH-001": "1f4ad410448a11fd25332d74eb493e8047ce9633747b4b0ec39790bfcd8ca92c",
         "projects/ocean-nomad/tools/fast-ui/settings-skill.mjs": "4f74309652ba58d2a72b09f4ba7bb73e6dafecbf4d5c931238ab16b1ffead921",
-        "projects/ocean-nomad/tools/fast-ui/settings-adapter.mjs": "1e23f18424dc04e41bb368ff7f6cd562322751553008b7a577f8d29e07cf983b",
+        "projects/ocean-nomad/tools/fast-ui/settings-adapter.mjs": "5488dca511a92225160f4543ae749477cda358a242eb1c1bd103a2788b9ea54e",
         "projects/ocean-nomad/tools/fast-ui/settings-state.cs.txt": "04b20998f674e1cdab993ee47a509f6abe5481f041c842e37099a09fe7318f35",
         "projects/ocean-nomad/tools/fast-ui/selected-control.cs.txt": "bc72ab3b21f84d3cca43b1684668310bf0b2249acc876d78284cd4b4d3453605",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/parameter-input.cs.txt": "3cddfc55ad6786b59bc2d438877ff73096e91a8823502055752fd70326d666c3",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020"
       },
@@ -186,7 +194,7 @@
         "projects/ocean-nomad/tools/raft-navigation/build_map.py": "af72e1cf1064124e6f031df0d80dc8ea11029e258c3a58494359f9597ab3d06f",
         "projects/ocean-nomad/tools/raft-navigation/route-action.mjs": "8622a7306d3f1fdedcc9270b871bec444248f10e331f04594d24b1c6f492d3ea",
         "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt": "ce9803e44df8503375f7e161e7b8627334a73edaddcf1a61ef9d92e6a41fe7cb",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020"
       },
       "brief": {
@@ -313,7 +321,11 @@
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
         "tools/unity-ui/session.mjs",
         "tools/unity-ui/error-monitor.mjs",
-        "tools/agent-runtime/catalog.mjs"
+        "tools/agent-runtime/catalog.mjs",
+        "tools/agent-runtime/pipeline.mjs",
+        "tools/agent-runtime/cycle-journal.mjs",
+        "tools/agent-runtime/cycle-analysis.mjs",
+        "tools/portable/runtime.mjs"
       ],
       "reviewed_sha256": {
         "ON-QUEST-INTRO-001": "fa96b73dc1ed1b5c398ea0630189d72aeaed9d3a92872d71d2e4e2c620c4c112",
@@ -324,12 +336,16 @@
         "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
         "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
         "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
-        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "tools/agent-runtime/mission-pool.mjs": "e012608659eee37536ed0194a011184edff6a521db146767d2db6d77f71aad32",
         "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
-        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+        "tools/agent-runtime/catalog.mjs": "aab2f2579a2f0efbcd6f83cfd162e1eb3f7c219d7d71729cd87411a82cc9cafd",
+        "tools/agent-runtime/pipeline.mjs": "3134529a3c4b4662a25dcb9ffebcae3e881ee68a236347ddc9bf1dce3adb157b",
+        "tools/agent-runtime/cycle-journal.mjs": "5013056d4d5175bcb2fe2efb10b1a38123c164a45ae6d29ba0e14791a9e9d630",
+        "tools/agent-runtime/cycle-analysis.mjs": "8a9457be96e8d888acc600b0a89c7ee1cf36222087e702fa2f3a96a815c9f6aa",
+        "tools/portable/runtime.mjs": "6b937977cc45b544ec20ba72a3de7ebd7ecd1813e5e621374422d1a008cffc8e"
       },
       "brief": {
         "goal": "Пропустить сюжетные страницы и получить свежий Done intro.",
@@ -356,7 +372,7 @@
           "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
           "Detailed report stays local; coordinator gets compact result."
         ],
-        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "coordinator_call": "Use portable runtime.prepareMissions before the cycle, then runtime.runPipeline with the selected mission list and fresh user task. Offline lookahead prepares the next two packets; one executor retains input and error watch until cycle cleanup. See brain/agents/PIPELINE.md. This orchestration is offline verified; live timing is pending.",
         "group": "onboarding"
       }
     },
@@ -386,7 +402,11 @@
         "tools/unity-ui/session.mjs",
         "tools/unity-ui/error-monitor.mjs",
         "tools/agent-runtime/control-gesture.cs.txt",
-        "tools/agent-runtime/catalog.mjs"
+        "tools/agent-runtime/catalog.mjs",
+        "tools/agent-runtime/pipeline.mjs",
+        "tools/agent-runtime/cycle-journal.mjs",
+        "tools/agent-runtime/cycle-analysis.mjs",
+        "tools/portable/runtime.mjs"
       ],
       "reviewed_sha256": {
         "ON-QUEST-CONTROL-001": "119422fe4418220b0efb6a7ed2977c208fc17d1fb3cadd8bf2c42529706a5cd7",
@@ -398,13 +418,17 @@
         "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
         "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
         "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
-        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "tools/agent-runtime/mission-pool.mjs": "e012608659eee37536ed0194a011184edff6a521db146767d2db6d77f71aad32",
         "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
         "tools/agent-runtime/control-gesture.cs.txt": "bdde2f7b3d0c7de5076d563d65f9ab8cbb7f3046776e74cf8d0ba4a32affb94b",
-        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+        "tools/agent-runtime/catalog.mjs": "aab2f2579a2f0efbcd6f83cfd162e1eb3f7c219d7d71729cd87411a82cc9cafd",
+        "tools/agent-runtime/pipeline.mjs": "3134529a3c4b4662a25dcb9ffebcae3e881ee68a236347ddc9bf1dce3adb157b",
+        "tools/agent-runtime/cycle-journal.mjs": "5013056d4d5175bcb2fe2efb10b1a38123c164a45ae6d29ba0e14791a9e9d630",
+        "tools/agent-runtime/cycle-analysis.mjs": "8a9457be96e8d888acc600b0a89c7ee1cf36222087e702fa2f3a96a815c9f6aa",
+        "tools/portable/runtime.mjs": "6b937977cc45b544ec20ba72a3de7ebd7ecd1813e5e621374422d1a008cffc8e"
       },
       "brief": {
         "goal": "Завершить movement и camera обычными короткими жестами.",
@@ -431,7 +455,7 @@
           "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
           "Detailed report stays local; coordinator gets compact result."
         ],
-        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "coordinator_call": "Use portable runtime.prepareMissions before the cycle, then runtime.runPipeline with the selected mission list and fresh user task. Offline lookahead prepares the next two packets; one executor retains input and error watch until cycle cleanup. See brain/agents/PIPELINE.md. This orchestration is offline verified; live timing is pending.",
         "group": "onboarding"
       }
     },
@@ -459,7 +483,11 @@
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt",
         "tools/unity-ui/session.mjs",
         "tools/unity-ui/error-monitor.mjs",
-        "tools/agent-runtime/catalog.mjs"
+        "tools/agent-runtime/catalog.mjs",
+        "tools/agent-runtime/pipeline.mjs",
+        "tools/agent-runtime/cycle-journal.mjs",
+        "tools/agent-runtime/cycle-analysis.mjs",
+        "tools/portable/runtime.mjs"
       ],
       "reviewed_sha256": {
         "ON-QUEST-WOODEN-HOOK-001": "166e88663086e30d8a85941133a9bbc0a8524860c17e2ce5cc60fb5b4de30751",
@@ -470,12 +498,16 @@
         "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
         "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
         "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
-        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "tools/agent-runtime/mission-pool.mjs": "e012608659eee37536ed0194a011184edff6a521db146767d2db6d77f71aad32",
         "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
-        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+        "tools/agent-runtime/catalog.mjs": "aab2f2579a2f0efbcd6f83cfd162e1eb3f7c219d7d71729cd87411a82cc9cafd",
+        "tools/agent-runtime/pipeline.mjs": "3134529a3c4b4662a25dcb9ffebcae3e881ee68a236347ddc9bf1dce3adb157b",
+        "tools/agent-runtime/cycle-journal.mjs": "5013056d4d5175bcb2fe2efb10b1a38123c164a45ae6d29ba0e14791a9e9d630",
+        "tools/agent-runtime/cycle-analysis.mjs": "8a9457be96e8d888acc600b0a89c7ee1cf36222087e702fa2f3a96a815c9f6aa",
+        "tools/portable/runtime.mjs": "6b937977cc45b544ec20ba72a3de7ebd7ecd1813e5e621374422d1a008cffc8e"
       },
       "brief": {
         "goal": "Изготовить WoodenHook и получить свежий Done wooden_hook.",
@@ -502,7 +534,7 @@
           "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
           "Detailed report stays local; coordinator gets compact result."
         ],
-        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "coordinator_call": "Use portable runtime.prepareMissions before the cycle, then runtime.runPipeline with the selected mission list and fresh user task. Offline lookahead prepares the next two packets; one executor retains input and error watch until cycle cleanup. See brain/agents/PIPELINE.md. This orchestration is offline verified; live timing is pending.",
         "group": "onboarding"
       }
     },
@@ -540,7 +572,11 @@
         "projects/ocean-nomad/tools/fast-spatial/aim-enemy.cs.txt",
         "projects/ocean-nomad/tools/fast-spatial/input-motor.cs.txt",
         "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt",
-        "tools/agent-runtime/catalog.mjs"
+        "tools/agent-runtime/catalog.mjs",
+        "tools/agent-runtime/pipeline.mjs",
+        "tools/agent-runtime/cycle-journal.mjs",
+        "tools/agent-runtime/cycle-analysis.mjs",
+        "tools/portable/runtime.mjs"
       ],
       "reviewed_sha256": {
         "ON-QUEST-SHARK-ATTACK-001": "51bce1630dcc450e5eb60f375904c33db6985f2d8c7eb80bc6921de29fa9c907",
@@ -553,10 +589,10 @@
         "tools/agent-runtime/quest-observer.cs.txt": "71e8025713304b7f67561a08d3ab212cb7a8f05e8d125e1576806fc12ccad449",
         "tools/agent-runtime/known-quest-ui.cs.txt": "9bc222cbd43e7600ebcc0caa92a20a930861552b0d3cf92a0a84b863d491ddd4",
         "tools/agent-runtime/select-quest-command.cs.txt": "5808929fe32f152e78f9293924f98393acc4b2e1070829166d6e2c3b3d94aa46",
-        "tools/agent-runtime/mission-pool.mjs": "ca3ef5459c378e9ebae757514f7a0f16f430ac780b2b753b9dcb4b8f3de6eb1f",
+        "tools/agent-runtime/mission-pool.mjs": "e012608659eee37536ed0194a011184edff6a521db146767d2db6d77f71aad32",
         "projects/ocean-nomad/tools/fast-spatial/shark-cheat-click.cs.txt": "d87c332e9e9a3a7cb89b07740ec92691722a80f74416e03607c64d1c2ea97e64",
         "projects/ocean-nomad/tools/fast-spatial/selected-control.cs.txt": "81e2ae7c004618b6c76112e4078addb7e6eff0865f7eee3c79d39926f3141ada",
-        "tools/unity-ui/session.mjs": "a98bc76bdfe9d646e78fee738eeebe3c6de525dc1e033cd2249afcae1be72ffa",
+        "tools/unity-ui/session.mjs": "d05fc55d3bb4354c6492a5bb1b7c2119fc2a75e71d7b3e591e32f5617a59b73e",
         "tools/unity-ui/error-monitor.mjs": "4c369ea244fe48f65ed5b18140ea67690f96b4aa9b335843494a417363c87020",
         "tools/agent-runtime/defense-command.cs.txt": "d9249866285971088d44045c5aabffdd3cab3abb72faa5f43d21d65df7de2c2c",
         "projects/ocean-nomad/tools/shark-defense/install.mjs": "278e3229b7812c660787828ab83b2073b6f5c4bf3c453749ca7fbab19e211371",
@@ -567,7 +603,11 @@
         "projects/ocean-nomad/tools/fast-spatial/aim-enemy.cs.txt": "dd7b7389589814239630af5f4ba2003fb7f646bad361eba9ef370dd39feefc76",
         "projects/ocean-nomad/tools/fast-spatial/input-motor.cs.txt": "3b10dba1897a46349786509c79bbb43272aa7813c0513e0bf51a773966cd1f7b",
         "projects/ocean-nomad/tools/raft-navigation/route-driver.cs.txt": "ce9803e44df8503375f7e161e7b8627334a73edaddcf1a61ef9d92e6a41fe7cb",
-        "tools/agent-runtime/catalog.mjs": "3f072469f247b23ac48876fb5a6048903d9dcaf5a7a1f1e0aa27b28fa2cebf9f"
+        "tools/agent-runtime/catalog.mjs": "aab2f2579a2f0efbcd6f83cfd162e1eb3f7c219d7d71729cd87411a82cc9cafd",
+        "tools/agent-runtime/pipeline.mjs": "3134529a3c4b4662a25dcb9ffebcae3e881ee68a236347ddc9bf1dce3adb157b",
+        "tools/agent-runtime/cycle-journal.mjs": "5013056d4d5175bcb2fe2efb10b1a38123c164a45ae6d29ba0e14791a9e9d630",
+        "tools/agent-runtime/cycle-analysis.mjs": "8a9457be96e8d888acc600b0a89c7ee1cf36222087e702fa2f3a96a815c9f6aa",
+        "tools/portable/runtime.mjs": "6b937977cc45b544ec20ba72a3de7ebd7ecd1813e5e621374422d1a008cffc8e"
       },
       "brief": {
         "goal": "Завершить полную миссию shark_attack, не только подход или вызов нападения.",
@@ -595,7 +635,7 @@
           "No progress reset, purchases, freecraft, transform writes or direct quest completion.",
           "Detailed report stays local; coordinator gets compact result."
         ],
-        "coordinator_call": "Use catalog.mjs prepareSelectedMissions then executeSelectedMissions with the reviewed revision/current Unity epoch; do not reconstruct commands or dependency bindings from chat history.",
+        "coordinator_call": "Use portable runtime.prepareMissions before the cycle, then runtime.runPipeline with the selected mission list and fresh user task. Offline lookahead prepares the next two packets; one executor retains input and error watch until cycle cleanup. See brain/agents/PIPELINE.md. This orchestration is offline verified; live timing is pending.",
         "group": "onboarding"
       }
     }

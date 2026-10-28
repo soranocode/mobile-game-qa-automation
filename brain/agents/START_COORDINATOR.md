@@ -2,7 +2,7 @@
 
 Проект: Ocean Nomad, Unity Editor. Текущий этап — оптимизация памяти и повторных вызовов, не новый игровой прогон.
 
-Изученный онборд одним прогоном: [ONBOARDING_RUN.md](ONBOARDING_RUN.md). Порядок из [onboarding-sequence.json](onboarding-sequence.json): intro → control → wooden_hook → hook_use → shark_attack. hands_collect отложена; новая игра не входит автоматически. Инструкция содержит точный вызов каталога, отдельный прогрев и обработку длительного запроса без сброса REPL.
+Изученный онборд одним прогоном: [ONBOARDING_RUN.md](ONBOARDING_RUN.md). Порядок из [onboarding-sequence.json](onboarding-sequence.json): intro → control → wooden_hook → hook_use → shark_attack. hands_collect отложена; новая игра не входит автоматически. [PIPELINE.md](PIPELINE.md) описывает подготовку двух следующих пакетов параллельно текущей миссии и анализ после всего цикла. Новая обвязка проверена офлайн, игровой замер ещё нужен.
 
 - Начни с AGENTS.md и `python tools/knowledge/dispatch.py --list`. Не загружай всю переписку, CURRENT и справочник.
 - Для одной знакомой задачи: `python tools/knowledge/dispatch.py hook_use --prepare`. Для чтения краткого пакета добавь `--packet`. Есть также intro, control, wooden_hook, shark_attack, settings, raft_navigation, shark_defense.
@@ -10,7 +10,7 @@
 - Только один назначенный исполнитель отправляет ввод Unity. Подготовка команд отдельно от запуска; повтор использует тот же подготовленный набор при совпадении эпохи Unity и ревизии.
 - Компоненты: `tools/agent-runtime/mission-pool.mjs`, `hook-runner.mjs`, `onboarding-runner.mjs`. Все пять изучаемых миссий — онборд, включая hook_use. Миссия задаёт цель и выбирает переиспользуемые навыки; не смешивать эти сущности из-за имён файлов. control/wooden_hook новой обвязкой прошли и одобрены 27.10; intro исправлен после подсказки Finish, автономный повтор ещё нужен. Подробности — `tools/agent-runtime/PREPARED_MISSIONS.md`.
 - Для быстрого вызова используй `getMissionPool()`, не ищи старые имена переменных REPL после сжатия контекста. Перед цепочкой проверь `readiness` всех выбранных миссий; текстовый кеш не означает готовность Unity.
-- Единый вход исполнителя: `tools/agent-runtime/catalog.mjs#prepareSelectedMissions`, затем `executeSelectedMissions`. Выбери нужные UID и их текущие epoch/revision; каталог сам вызывает factories intro/control/wooden_hook/hook_use/shark_attack. Повтор не собирает команды из документации.
+- Единый вход исполнителя: `tools/portable/runtime.mjs#openRuntime/getRuntime`, затем `qa.prepareMissions([UID])` по одной и `qa.runPipeline(...)`. Все Unity команды прогреть до цикла; во время миссии параллельно готовятся только пакеты следующих задач. Повтор не собирает команды из документации. `qa.runMissions` — alias конвейера.
 - Текущие координаты/сцена/активность игры неизвестны до свежего наблюдения. Наличие сохранённого пакета или старого запроса не разрешает запускать игру.
 - REVIEW_REQUIRED означает проверить изменённые источники и выжимку; не обновлять хеши механически.
 - Подробный протокол читать для изменения этой архитектуры: `brain/agents/PROTOCOL.md`.

@@ -4,6 +4,24 @@ import { FastUiSession } from './session.mjs';
 
 const template = 'const string role = "__ROLE__"; __ERROR_WATCH_SETUP__ // fake engine for transport tests';
 
+test('cycle telemetry records tool timing and outcome without copying command bodies or arbitrary state',async()=>{
+  const events=[],session=new FastUiSession(async()=>({success:true,data:{result:{status:'sent',role:'known',private_value:'not-telemetry'}}}),template);
+  const detach=session.subscribe(event=>events.push(event));
+  await session.invoke('execute_code',{code:'private-command-body'});detach();
+  assert.deepEqual(events.map(e=>e.type),['mcp_start','mcp_end']);assert.equal(events[1].outcomes[0].status,'sent');
+  assert.equal(JSON.stringify(events).includes('private-command-body'),false);
+  assert.equal(JSON.stringify(events).includes('not-telemetry'),false);
+});
+
+test('stop observed during telemetry publication blocks transport while cleanup remains available',async()=>{
+  let stopped=false,calls=0;
+  const session=new FastUiSession(async()=>{calls++;return{success:true,data:{results:[]}};},template);
+  const unguard=session.guard(()=>{if(stopped)throw Error('cycle stopped');});
+  session.subscribe(event=>{if(event.type==='mcp_start')stopped=true;});
+  await assert.rejects(session.batch([]),/cycle stopped/);assert.equal(calls,0);
+  await session.batch([],{checkErrors:false});assert.equal(calls,1);unguard();
+});
+
 test('a stopped client cannot send input', async () => {
   let requests = 0;
   const session = new FastUiSession(async () => { requests++; }, template);
