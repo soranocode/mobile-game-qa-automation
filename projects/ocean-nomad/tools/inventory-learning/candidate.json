@@ -1,0 +1,28 @@
+{
+  "schema": "ocean-inventory-candidate/1",
+  "date": "2026-10-29",
+  "status": "EXPERIMENTAL_AGENT_VERIFIED_SCOPED",
+  "knowledge_id": "ON-UI-INVENTORY-001",
+  "build": "Ocean Nomad 2.11.0 dev",
+  "runtime": "Unity Editor",
+  "execution_authorized": false,
+  "approved_handler": false,
+  "registered_in_mission_catalog": false,
+  "source_files_sha256": {
+    "motor.mjs": "4b0f7639d24bfa4cf610ba738189b3425678bf759c755313d2320cc73cb7ed8e",
+    "click.cs.txt": "d2f46674244b5eae1649b3dc03e472cf8c9ee60ba8d3fa1b3667a31e457a5b21",
+    "probe.cs.txt": "bc95ae44eb6508b662fdd8cb9d8e5e16ad208603984f967cb94ccd1faced9088",
+    "drag.cs.txt": "d91d491131b77e373bc0b5837867fa2bc5cb554ba06ce0a9f53b8909290e795e",
+    "hold.cs.txt": "c36c066ebdd20fea4afe984f89a8c88f4474e1212c7819c5d716f365f9d36c1f",
+    "snapshot-inventory.cs.txt": "521173c29fb37301e4a333062c8b9d940fc9b423c40a3989982811a70615bcf2",
+    "snapshot-slider.cs.txt": "00de112ad199781389fe135a37ab45d2db090496136ec6e22a2131e1ca406940",
+    "use-guard.cs.txt": "f895b426aa4674767a6712504bbfb079f32e363d514394f4efa4e35cce8d2eed"
+  },
+  "live_evidence": "brain-store/inventory-learning/2026-10-29/report.json",
+  "limits": [
+    "single designated executor and fresh context required",
+    "copy code to ignored evidence directory before use",
+    "arbitrary storage/item types and stop races not fully validated",
+    "raw evidence is machine local; no saved runtime IDs or authorizations"
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "schema": "ocean-knowledge-index/1",
   "game_id": "ocean-nomad",
-  "updated_at": "2026-10-27",
+  "updated_at": "2026-10-29",
   "scope": "Unity Editor, Ocean Nomad2.11.0dev; проверить совместимость перед исполнением",
   "retrieval": "Поиск только метаданных; явное чтение карточки по ID. Связи не загружаются автоматически. Raw evidence локально и может отсутствовать на другом ПК.",
   "routes": {
@@ -113,6 +113,15 @@
       ],
       "if_needed": [
         "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "inventory": {
+      "first": [
+        "ON-UI-INVENTORY-001"
+      ],
+      "if_needed": [
+        "ON-UI-SKILLS-001",
         "ON-UI-ERRORWATCH-001"
       ]
     }
@@ -858,6 +867,50 @@
         "ON-QUEST-START-001",
         "ON-UI-ERRORWATCH-001"
       ]
+    },
+    {
+      "id": "ON-UI-INVENTORY-001",
+      "path": "ui/ON-UI-INVENTORY-001.md",
+      "title": "Инвентарь: вход, слоты и операции с предметами",
+      "kind": "ui_skill",
+      "status": "AGENT_VERIFIED_SCOPED 2026-10-29; experimental motor; human speed approval pending",
+      "aliases": [
+        "inventory",
+        "инвентарь",
+        "рюкзак",
+        "backpack",
+        "разделение стака",
+        "экипировать предмет",
+        "перенос предметов",
+        "удержание предмета",
+        "зажать предмет",
+        "описание предмета",
+        "split",
+        "merge",
+        "сортировка инвентаря",
+        "использовать еду",
+        "удалить предмет"
+      ],
+      "tags": [
+        "ui",
+        "inventory",
+        "items",
+        "stack",
+        "equip"
+      ],
+      "related_ids": [
+        "ON-UI-SKILLS-001",
+        "ON-UI-ERRORWATCH-001",
+        "ON-QUEST-WOODEN-HOOK-001"
+      ],
+      "last_observation": {
+        "date": "2026-10-29",
+        "scope": "current Editor inventory learning; historical interventions retained",
+        "result": "open/hold/drag/split/merge/swap/equip/sort/use/remove/locked-tab offer scoped checks passed; final expected deltas only",
+        "cleanup_confirmed": true,
+        "evidence": "brain-store/inventory-learning/2026-10-29/report.json",
+        "learning_notes": "episodes/ON-UI-INVENTORY-2026-10-29.md"
+      }
     }
   ]
 }
