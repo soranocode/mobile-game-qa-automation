@@ -1,6 +1,6 @@
 # Inventory primitives: experimental candidate
 
-These files were exercised live on Ocean Nomad2.11.0 dev. They are not an approved universal prepared inventory handler and are not registered in portable prepareMissions/runPipeline. A future run still needs a current authorized task, custom-tools discovery, expected project, Play/Game, current domain epoch and exclusive idle ownership. Never reuse evidence instance IDs, saved screen coordinates or authorization. Do not warm unrelated settings missions.
+These files were exercised live on Ocean Nomad2.11.0 dev. They are not an approved universal prepared inventory handler and are not registered in portable prepareMissions/runPipeline. A future run still needs a current authorized task, custom-tools discovery, expected project, Play/Game, current domain epoch and exclusive idle ownership. Never reuse evidence instance IDs, saved screen coordinates or authorization. Use only the commands required by the current task.
 
 ## Current files and parameters
 
@@ -14,7 +14,7 @@ The local episode also retained hold-hook.cs.txt with alternate screenshot filen
 - snapshot-slider.cs.txt: current null-safe read-only slider observer. No external parameters; resolves the semantic SplitItemView slider path and reports missing/missing_slider instead of dereferencing null. min/max/value/whole are read only when ready.
 - use-guard.cs.txt: read-only, no external parameters. Resolves the current Use button callback target and reads useInLongUnlock. Require ready and false before Use; selection UID/count must separately match the intended operation. An unresolved guard is not safe admission.
 
-All input files use the installed passive error watcher with no cached Console exceptions. QaAgent.FastUi.sequence invalidates delayed actions on stop. QaInventoryLearning.warmup=true compiles input files without sending input; warm each file in a separate bounded call if the domain changed, then reset tofalse. qa.session.begin({expectedErrors:[]}) installs/arms observation and owns background execution. qa.session.finish() invalidates pending work and releases session/background state; verify own heldfalse as well.
+All input files use the installed passive error watcher with no cached Console exceptions. QaAgent.FastUi.sequence invalidates delayed actions on stop. Keep QaInventoryLearning.warmup=false during actual execution; this legacy no-input guard is not a work stage. Compile each command on its first actual use; do not send separate compilation-only calls. qa.session.begin({expectedErrors:[]}) installs/arms observation and owns background execution. qa.session.finish() invalidates pending work and releases session/background state; verify own heldfalse as well.
 
 ## Example through the existing executor session
 

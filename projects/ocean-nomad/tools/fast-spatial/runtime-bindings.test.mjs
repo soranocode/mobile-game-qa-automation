@@ -55,13 +55,12 @@ async function harness(t, { observerStatus = 'prepared' } = {}) {
   return { bindings, calls, session, questParameterFile };
 }
 
-test('prepare uses exact passive source branches and writes a real newline', async t => {
+test('creating hook bindings sends no Unity command and does not write runtime parameters', async t => {
   const { bindings, questParameterFile, calls } = await harness(t);
-  assert.deepEqual(await bindings.prepare(), { prepared: true, input_sent: false });
-  assert.equal(await readFile(questParameterFile, 'utf8'), 'observe\n');
-  const compiledSelected = calls.findIndex(code => code.includes('const string role = "selected_ui";'));
-  assert.ok(calls[compiledSelected - 1].includes('SetBool("QaAgent.FastUi.warmup",true)'));
-  assert.ok(calls[compiledSelected + 1].includes('SetBool("QaAgent.FastUi.warmup",false)'));
+  assert.equal(typeof bindings.questUi,'function');
+  assert.equal(Object.hasOwn(bindings,'prepare'),false);
+  assert.deepEqual(calls,[]);
+  await assert.rejects(readFile(questParameterFile),{code:'ENOENT'});
 });
 
 test('read-only quest observation cannot repeat the input role', async t => {
@@ -81,9 +80,9 @@ test('quest parameters separate role/target and wait for terminal frame status',
   assert.ok(calls.some(code => code.includes('return UnityEditor.SessionState.GetString("QaAgent.QuestUi.status"')));
 });
 
-test('failed observer installation is never reported as prepared', async t => {
+test('actual observer setup preserves an unresolved source outcome', async t => {
   const { bindings } = await harness(t, { observerStatus: 'quest_source_unknown' });
-  await assert.rejects(bindings.prepare(), /Hook observer preparation failed: quest_source_unknown/);
+  assert.equal((await bindings.observe('prepare')).status,'quest_source_unknown');
 });
 
 test('inactive session cannot send UI input or overwrite the parameter file', async t => {
@@ -91,7 +90,6 @@ test('inactive session cannot send UI input or overwrite the parameter file', as
   session.active = false;
   await assert.rejects(bindings.questUi('quest', 'hook_use'), /Begin the single MCP session first/);
   await assert.rejects(bindings.click('Canvas/Button'), /Begin the single MCP session first/);
-  await assert.rejects(bindings.prepare(), /Begin the single MCP session first/);
   assert.deepEqual(calls, []);
   await assert.rejects(readFile(questParameterFile), { code: 'ENOENT' });
 });

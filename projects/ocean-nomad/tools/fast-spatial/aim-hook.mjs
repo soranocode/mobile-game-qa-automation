@@ -23,19 +23,6 @@ export class AimHookAction {
     this.running = false;
   }
 
-  async prepare() {
-    if (this.running) throw new Error('Action is already running');
-    const path = JSON.stringify(this.parameterFile);
-    await writeFile(this.parameterFile, 'prepare\n0\ndirect\n');
-    const [setup, , compiled] = await this.session.batch([
-      exec(`UnityEditor.SessionState.SetString("${KEY}.params",${path});UnityEditor.SessionState.SetString("${KEY}.mode","prepare");return new{input_sent=false};`),
-      exec(SET), exec(this.code),
-      exec(READ),
-    ]);
-    if (setup?.input_sent !== false || compiled?.status !== 'compiled_only') throw new Error('No-input preparation failed');
-    return compiled;
-  }
-
   async stop() { return (await this.session.batch([exec(STOP)], { checkErrors: false }))[0]; }
 
   async run(targetInstanceId, { aimOnly = false, timeoutMs = 14000, trajectory = 'direct' } = {}) {
@@ -45,7 +32,8 @@ export class AimHookAction {
     this.running = true;
     try {
       await writeFile(this.parameterFile, `${aimOnly ? 'aim' : 'collect'}\n${targetInstanceId}\n${trajectory}\n`);
-      const [, ack] = await this.session.batch([exec(SET), exec(this.code)]);
+      const [, ack] = await this.session.batch([exec(`UnityEditor.SessionState.SetString("${KEY}.params",${JSON.stringify(this.parameterFile)});
+${SET}`), exec(this.code)]);
       if (ack?.status !== 'running') return ack;
       const deadline = performance.now() + Math.max(1000, Math.min(timeoutMs, 15000));
       while (performance.now() < deadline) {

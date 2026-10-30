@@ -73,13 +73,12 @@ export async function openRuntime({configPath=resolve(REPO,'qa.local.json'),conn
   const preparedTasks=new Map();
   const runtime={config,client:Object.freeze({invoke:session.invoke,timings:client.timings}),session,pool,cycleController:null,
     async prepareMissions(missions){
-      if(runtime.cycleController)throw Error('Warm Unity commands before the active pipeline');
+      if(runtime.cycleController)throw Error('Register handlers before the active pipeline');
       const state=await context();
       if(!state.playing||state.paused||!state.scenes.includes('Game'))throw Error('Prepare missions in the running unpaused Game scene');
       if(preparedEpoch&&preparedEpoch!==state.key){pool.invalidate();preparedTasks.clear();}
       const tasks=await readReviewedTasks(missions,state.key);
       const result=await prepareSelectedMissions({tasks,session,pool,parameterDirectory:config.artifactDirectory});
-      if(preparedEpoch!==state.key)await session.prepareCyclePrimitives();
       for(const task of tasks)preparedTasks.set(task.mission,task);
       preparedEpoch=state.key;return result;
     },
@@ -90,7 +89,7 @@ export async function openRuntime({configPath=resolve(REPO,'qa.local.json'),conn
       if(!Array.isArray(missions)||!missions.length||new Set(missions).size!==missions.length)throw Error('Explicit distinct missions required');
       const tasks=missions.map(mission=>{
         const task=preparedTasks.get(mission);
-        if(!task||task.epoch!==preparedEpoch||!pool.readiness(task).ready)throw Error('Warm requested mission first: '+mission);
+        if(!task||task.epoch!==preparedEpoch||!pool.readiness(task).ready)throw Error('Register requested mission handler first: '+mission);
         return task;
       });
       const controller=new AbortController();runtime.cycleController=controller;

@@ -1,0 +1,57 @@
+// Passive current-instance quest observation. Mode is prepare/read/stop; no game commands.
+__ERROR_WATCH_SETUP__
+const string key="QaAgent.PreparedQuest.Observer.v1";
+var mode="__MODE__";
+var state=System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if(mode=="stop"){
+ if(state!=null&&state.ContainsKey("cleanup"))((System.Action)state["cleanup"])();
+ return new{status="stopped",input_sent=false};
+}
+if(mode=="prepare"){
+ if(state!=null&&state.ContainsKey("cleanup"))((System.Action)state["cleanup"])();
+ var uid=UnityEditor.SessionState.GetString("QaAgent.PreparedQuest.uid","");
+ if(!new[]{"canned_eat"}.Contains(uid))return new{status="unsupported_quest",input_sent=false};
+ var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic;
+ var managers=new System.Collections.Generic.List<Quests.QuestManager>();
+ foreach(var gui in UnityEngine.Resources.FindObjectsOfTypeAll<TestGUI>()){
+  if(gui==null||!gui.isActiveAndEnabled||!gui.gameObject.scene.IsValid()||!gui.gameObject.scene.isLoaded)continue;
+  var panels=gui.GetType().GetField("_activePanelList",flags).GetValue(gui) as System.Collections.IEnumerable;
+  if(panels==null)continue;
+  foreach(var panel in panels){if(panel==null)continue;var f=panel.GetType().GetField("_questManager",flags);
+   var m=f==null?null:f.GetValue(panel) as Quests.QuestManager;
+   if(m!=null&&!managers.Any(v=>object.ReferenceEquals(v,m)))managers.Add(m);
+  }
+ }
+ if(managers.Count!=1)return new{status="quest_source_unknown",input_sent=false};
+ var manager=managers[0];
+ var signals=typeof(Quests.QuestManager).GetField("_signals",flags).GetValue(manager) as Quests.Signals.QuestSignals;
+ if(signals==null)return new{status="quest_signals_unknown",input_sent=false};
+ state=new System.Collections.Generic.Dictionary<string,object>();var observed=state;
+ var scene=UnityEngine.SceneManagement.SceneManager.GetSceneByName("Game");
+ observed["uid"]=uid;observed["manager"]=manager;observed["scene"]=scene.handle;observed["active"]=true;
+ observed["watched"]=manager.ActiveQuests.FirstOrDefault(q=>q.Uid==uid);
+ observed["started"]=new{observed=false};observed["done"]=new{observed=false};observed["start_frame"]=UnityEngine.Time.frameCount;
+ var started=signals.Started.Listen(q=>{
+  if(!(bool)observed["active"]||q==null||q.Uid!=uid)return;
+  observed["watched"]=q;observed["started"]=new{observed=true,uid=uid,instance=System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(q),frame=UnityEngine.Time.frameCount};observed["done"]=new{observed=false};
+ });
+ System.IDisposable done;
+ try{done=signals.Done.Listen(q=>{
+  if(!(bool)observed["active"]||q==null||q.Uid!=uid||!object.ReferenceEquals(q,observed["watched"]))return;
+  var steps=q.StartedSteps.Select(s=>new{uid=s.Uid,value=s.Value,need=s.Need,complete=s.IsComplete}).ToArray();
+  observed["done"]=new{observed=true,quest_uid=uid,completion_fresh=true,completion_source="quest_done_event",
+   final_complete=steps.Length>0&&steps.All(s=>s.complete&&s.value>=s.need),quest_instance=System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(q),steps=steps,
+   frame=UnityEngine.Time.frameCount,time=UnityEngine.Time.realtimeSinceStartup};
+ });}catch{started.Dispose();throw;}
+ observed["cleanup"]=(System.Action)(()=>{observed["active"]=false;started.Dispose();done.Dispose();});
+ System.AppDomain.CurrentDomain.SetData(key,observed);
+ return new{status="prepared",input_sent=false,uid=uid};
+}
+if(mode!="read"||state==null||!(bool)state["active"])return new{status="not_prepared",input_sent=false};
+var current=UnityEngine.SceneManagement.SceneManager.GetSceneByName("Game");
+if(!current.isLoaded||current.handle!=(int)state["scene"])return new{status="source_changed",input_sent=false};
+var source=state["manager"] as Quests.QuestManager;var wanted=(string)state["uid"];
+var active=source.ActiveQuests.FirstOrDefault(q=>q.Uid==wanted);
+return new{status="observed",uid=wanted,active=active!=null,
+ steps=active==null?new object[0]:active.StartedSteps.Select(s=>(object)new{uid=s.Uid,value=s.Value,need=s.Need,complete=s.IsComplete}).ToArray(),
+ started=state["started"],active_instance=active==null?0:System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(active),observed_from_frame=state["start_frame"],done=state["done"],frame=UnityEngine.Time.frameCount,error_watch=errorWatchSnapshot()};

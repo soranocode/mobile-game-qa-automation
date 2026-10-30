@@ -1,6 +1,4 @@
 import {writeFile} from 'node:fs/promises';
-const STATUS='return UnityEditor.SessionState.GetString("QaAgent.QuestUi.status","idle");';
-const FRAMES='return UnityEditor.SessionState.GetString("QaAgent.QuestUi.frames","");';
 const exec=code=>({tool:'execute_code',params:{action:'execute',code,safety_checks:true}});
 // Rebind the exact live-tested input wrappers to a fresh project-guarded MCP session.
 export function createHookBindings({session,questSource,selectedUiSource,observerSource,questParameterFile}) {
@@ -11,6 +9,5 @@ export function createHookBindings({session,questSource,selectedUiSource,observe
  const click=async path=>{requireActive();var vals=await qaSession.batch([{tool:'execute_code',params:{action:'execute',code:'SessionState.SetString("QaAgent.FastUi.target_path",'+JSON.stringify(path)+');return new{selected=true};'}},{tool:'execute_code',params:{action:'execute',code:qaSession.instrument(qaQuestRuntime.uguiCode)}}]);var a=vals[1];if(a.status!=='pending')return a;await new Promise(r=>setTimeout(r,100));return {status:(await qaSession.observe()).status,chosen:path};};
  const observe=async mode=>cmdExec(session.instrument(observerSource.replace(/__MODE__/g,mode)));
  const observeQuestUi=async role=>{if(role!=='observe')throw Error('Read-only observer');await writeFile(questParameterFile,'observe\n');return{state:await cmdExec(session.instrument(source.replace('var role=lines[0];','var role="observe";')))};};
- const prepare=async()=>{requireActive();await writeFile(questParameterFile,'observe\n');await cmdExec('UnityEditor.SessionState.SetString("QaAgent.QuestUi.params",'+JSON.stringify(questParameterFile)+');return new{input_sent=false};');await session.batch([exec(session.instrument(source)),exec(session.instrument(source.replace('var role=lines[0];','var role="observe";'))),exec(STATUS),exec(FRAMES)]);const oldWarmup=await cmdExec('var old=UnityEditor.SessionState.GetBool("QaAgent.FastUi.warmup",false);UnityEditor.SessionState.SetBool("QaAgent.FastUi.warmup",true);return old;');try{await cmdExec(session.instrument(selectedUiSource));}finally{await cmdExec('UnityEditor.SessionState.SetBool("QaAgent.FastUi.warmup",'+(oldWarmup?'true':'false')+');return new{input_sent=false};');}const observer=await observe('prepare');if(observer?.status!=='prepared')throw Error('Hook observer preparation failed: '+(observer?.status??'unknown'));return{prepared:true,input_sent:false};};
- return {questUi,click,observe,observeQuestUi,prepare};
+ return {questUi,click,observe,observeQuestUi};
 }

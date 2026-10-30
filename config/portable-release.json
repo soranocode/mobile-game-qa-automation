@@ -1,6 +1,6 @@
 {
   "schema": "ocean-qa-portable-release/1",
-  "updated_at": "2026-10-28",
+  "updated_at": "2026-10-29",
   "scope": "Unity Editor autotests",
   "tested_environment": {
     "unity": "6000.0.66f2",
@@ -39,8 +39,24 @@
     "tools/agent-runtime/cycle-journal.mjs",
     "tools/agent-runtime/cycle-analysis.mjs",
     ".codex/agents/ocean-coordinator.toml",
-    "brain/agents/ROLE_HANDOFF.md"
+    "brain/agents/ROLE_HANDOFF.md",
+    "projects/ocean-nomad/knowledge/missions/ON-QUEST-CANNED-EAT-001.md",
+    "projects/ocean-nomad/knowledge/ui/ON-UI-INVENTORY-001.md",
+    "projects/ocean-nomad/tools/canned-eat/factory.mjs",
+    "projects/ocean-nomad/tools/canned-eat/run.mjs",
+    "projects/ocean-nomad/tools/canned-eat/bindings.mjs",
+    "projects/ocean-nomad/tools/canned-eat/quest-imgui-canned.cs.txt",
+    "projects/ocean-nomad/tools/canned-eat/quest-ui-observe-canned.cs.txt",
+    "projects/ocean-nomad/tools/canned-eat/quest-observer-canned.cs.txt",
+    "projects/ocean-nomad/tools/inventory-learning/motor.mjs",
+    "projects/ocean-nomad/tools/inventory-learning/inventory-actions.mjs",
+    "projects/ocean-nomad/tools/inventory-learning/click.cs.txt",
+    "projects/ocean-nomad/tools/inventory-learning/probe.cs.txt",
+    "projects/ocean-nomad/tools/inventory-learning/drag.cs.txt",
+    "projects/ocean-nomad/tools/inventory-learning/snapshot-inventory.cs.txt",
+    "projects/ocean-nomad/tools/inventory-learning/use-guard.cs.txt"
   ],
-  "runtime_preparation_required": true,
-  "execution_authorized": false
+  "execution_authorized": false,
+  "runtime_registration_required": true,
+  "command_policy": "Local handler registration; compile commands on first actual use; no separate preliminary execution stage."
 }

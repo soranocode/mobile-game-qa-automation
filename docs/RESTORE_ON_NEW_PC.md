@@ -1,6 +1,6 @@
 # Восстановление Unity автотестов на другом ПК
 
-Комплект переносит код и отобранный опыт Ocean Nomad на 28.10.2026. Новый Codex работает с этим справочником и готовыми исполнителями. Состояние его чата, текущего мира и прогретых процессов создаётся заново.
+Комплект переносит код и отобранный опыт Ocean Nomad на 28.10.2026. Новый Codex работает с этим справочником и готовыми исполнителями. Состояние его чата, текущего мира и рабочих процессов создаётся заново.
 
 ## Получить комплект
 
@@ -77,16 +77,17 @@ await qa.prepareMissions(['intro']);
 await qa.prepareMissions(['control']);
 await qa.prepareMissions(['wooden_hook']);
 await qa.prepareMissions(['hook_use']);
+await qa.prepareMissions(['canned_eat']);
 await qa.prepareMissions(['shark_attack']);
 ```
 
-Подготовка не выполняет миссии и не создаёт новую игру. Первый прогрев разделить на отдельные запросы с достаточным timeout, иначе сброс REPL уничтожит процесс. Повтор при совпадающих ревизиях и эпохе использует готовый пул. После обновления исходников нужен новый idle runtime/процесс, а не старый ES module cache.
+Подготовка не выполняет миссии и не создаёт новую игру. Регистрация handlers локальная, команды компилируются при первом фактическом обращении. Повтор при совпадающих ревизиях и эпохе использует готовый пул. После обновления исходников нужен новый idle runtime/процесс, а не старый ES module cache.
 
 Только по новому запросу QA:
 
 ```js
 var result = await qa.runPipeline({
-  missions: ['intro','control','wooden_hook','hook_use','shark_attack'],
+  missions: ['intro','control','wooden_hook','hook_use','canned_eat','shark_attack'],
   taskId: 'human-onboarding-' + Date.now(),
   authorized: true
 });
@@ -97,7 +98,7 @@ nodeRepl.write(result);
 
 Для всей цепочки timeout должен учитывать суммарные бюджеты; внешнюю ячейку можно ожидать через running cell ID короткими интервалами. Не запускать дубликат из-за отсутствия немедленного ответа. Отмена — `qa.stop()`/AbortSignal; при неизвестном исходе сначала отмена владельца и свежее состояние. Если `cleanup_confirmed: false`, после восстановления связи выполнить `qa.recoverStoppedCycle()`; он только подтверждает остановку, без повторения игры. Детали запуска — `brain/agents/ONBOARDING_RUN.md`.
 
-Для настроек использовать `await qa.session.prepare()`, затем `var settings = await qa.createSettingsAdapter(); await settings.prepare();` и прежний `runApprovedUiSkill`/`runApprovedSettingsChecks`. Для навигации и боя — их существующие точки подготовки в `projects/ocean-nomad/tools/`. Полная карта, позиции, активное оружие, ID целей и сигналы угроз всегда получаются заново.
+Для настроек создать `var settings = await qa.createSettingsAdapter();` и использовать прежний `runApprovedUiSkill`/`runApprovedSettingsChecks`. Параметры привязываются при реальном действии; отдельные предварительные вызовы не нужны. Для навигации и боя — их существующие точки подготовки в `projects/ocean-nomad/tools/`. Полная карта, позиции, активное оружие, ID целей и сигналы угроз всегда получаются заново.
 
 ## Проверить перенос
 

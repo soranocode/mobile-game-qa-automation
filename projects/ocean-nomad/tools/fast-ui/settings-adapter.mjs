@@ -31,20 +31,15 @@ export class SettingsAdapter {
   }
   async prepare() {
     this.session.assertOwner?.();
-    if(this.session.active||this.session.cycleActive)throw Error('Prepare before starting the UI session');
     // One fixed parameter file per local controller. Runtime values never become new C# source.
     await writeFile(this.parameterFile,TARGETS.close_settings+'\n0.5','utf8');
-    const setup=`UnityEditor.SessionState.SetBool("QaAgent.FastUi.warmup", true);
-UnityEditor.SessionState.SetString("QaAgent.FastUi.parameter_file", ${JSON.stringify(this.parameterFile)});
-return new { input_sent = false };`;
-    const r=await this.session.batch([exec(setup),exec(this.parameterCode),exec(this.inputCode),exec(this.snapshotCode)]);
-    if(!r.slice(1).every(x=>x?.status==='compiled_only'&&x.input_sent===false))throw Error('Unsafe preparation outcome');
     this.prepared=true;
-    return {compiled:3,input_sent:false};
+    return {registered:true,input_sent:false};
   }
   async snapshot() { return (await this.session.batch([exec(this.snapshotCode)]))[0]; }
   async click(id,{fraction=0.5,expect=()=>true,label=id,validate=()=>{}}={}) {
-    if(!this.prepared||!this.session.active)throw Error('Prepare and begin before UI input');
+    if(!this.session.active)throw Error('Begin before UI input');
+    if(!this.prepared)await this.prepare();
     const target=TARGETS[id];
     if(!target)throw Error('Unapproved settings control: '+id);
     if(!Number.isFinite(fraction)||fraction<0||fraction>1)throw Error('Invalid slider fraction');
@@ -52,7 +47,9 @@ return new { input_sent = false };`;
     for(let attempt=0;attempt<12;attempt++) {
       const before=await this.snapshot();validate(before);
       await writeFile(this.parameterFile,target+'\n'+fraction.toFixed(9),'utf8');
-      const [selected,ack,first]=await this.session.batch([exec(this.parameterCode),exec(this.inputCode),exec(this.snapshotCode)]);
+      const [,selected,ack,first]=await this.session.batch([
+        exec(`UnityEditor.SessionState.SetString("QaAgent.FastUi.parameter_file", ${JSON.stringify(this.parameterFile)});return new{bound=true,input_sent=false};`),
+        exec(this.parameterCode),exec(this.inputCode),exec(this.snapshotCode)]);
       if(selected?.status!=='selected')throw Error('Target parameters not selected');
       let state=first;
       const ackDeadline=performance.now()+800;

@@ -11,18 +11,34 @@ function fixture(trial) {
   return{events,session,bindings,aim,trial,cycle:{},queue:{}};
 }
 
-test('preparation warms only no-input helpers and releases the session',async()=>{
+test('registration does not begin a session or call any preparation helper',async()=>{
   const f=fixture(async()=>{});await prepareHookHandle(f);
-  assert.deepEqual(f.events,['begin','bindings.prepare','aim.prepare','observe.read','aim.stop','observe.stop','finish']);
+  assert.deepEqual(f.events,[]);
   assert.equal(f.session.active,false);
+});
+
+test('cold hook registers without transport or warmup and uses fresh observation during the real run',async()=>{
+  let trialCalls=0;const f=fixture(async c=>{trialCalls++;await c.aim.run(42);await c.click('use');return{status:'complete'};});
+  const handler=await prepareHookHandle(f);
+  assert.deepEqual(f.events,[]);assert.equal(handler.preparation_mode,'on_demand');
+  await handler.run({signal:new AbortController().signal});
+  assert.equal(trialCalls,1);assert.equal(f.events.includes('bindings.prepare'),false);assert.equal(f.events.includes('aim.prepare'),false);
+  assert.equal(f.events.includes('observe.prepare'),true);assert.equal(f.session.active,false);
+});
+
+test('cold hook unknown outcome releases input without retrying the trial',async()=>{
+  let calls=0;const f=fixture(async()=>{calls++;throw Error('transport uncertain');});
+  const handler=await prepareHookHandle(f);
+  await assert.rejects(handler.run({signal:new AbortController().signal}),/transport uncertain/);
+  assert.equal(calls,1);assert.equal(f.session.active,false);assert.equal(f.events.at(-2),'observe.stop');
 });
 
 test('repeat uses warm helpers but fresh observer and report',async()=>{
   const reports=[];const f=fixture(async c=>{reports.push(c.report);await c.aim.run(42);await c.click('use');return{status:'complete'};});
   const handle=await prepareHookHandle(f);const signal=new AbortController().signal;
   await handle.run({signal});await handle.run({signal});
-  assert.equal(f.events.filter(e=>e==='bindings.prepare').length,1);
-  assert.equal(f.events.filter(e=>e==='aim.prepare').length,1);
+  assert.equal(f.events.filter(e=>e==='bindings.prepare').length,0);
+  assert.equal(f.events.filter(e=>e==='aim.prepare').length,0);
   assert.equal(f.events.filter(e=>e==='observe.prepare').length,2);
   assert.notEqual(reports[0],reports[1]);assert.equal(f.session.active,false);
 });
@@ -32,7 +48,7 @@ test('mission rebinds its parameter files after another mission prepared on the 
   f.rebind=async()=>{binds++;};
   const h=await prepareHookHandle(f);
   await h.run({signal:new AbortController().signal});await h.run({signal:new AbortController().signal});
-  assert.equal(binds,3);assert.equal(f.events.filter(e=>e==='bindings.prepare').length,1);
+  assert.equal(binds,2);assert.equal(f.events.filter(e=>e==='bindings.prepare').length,0);
 });
 
 test('unknown execution failure is not retried and cleans up',async()=>{
@@ -60,9 +76,11 @@ test('already aborted task never begins or sends input',async()=>{
   assert.equal(f.events.length,before);
 });
 
-test('preparation failure releases observer and session',async()=>{
-  const f=fixture(async()=>{});f.aim.prepare=async()=>{throw Error('compile failed');};
-  await assert.rejects(prepareHookHandle(f),/compile failed/);
+test('first-use observation failure releases observer and session',async()=>{
+  const f=fixture(async()=>{}),observe=f.bindings.observe;
+  f.bindings.observe=async mode=>{if(mode==='prepare')throw Error('observer failed');return observe(mode);};
+  const handler=await prepareHookHandle(f);
+  await assert.rejects(handler.run({signal:new AbortController().signal}),/observer failed/);
   assert.equal(f.session.active,false);assert.equal(f.events.at(-2),'observe.stop');
 });
 

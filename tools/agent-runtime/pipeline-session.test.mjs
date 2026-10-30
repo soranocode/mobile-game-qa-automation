@@ -90,11 +90,12 @@ test('late asynchronous work from a released owner cannot send another command',
   trigger.resolve();await assert.rejects(late,/expired/);assert.equal(f.state.inputs,1);
 });
 
-test('cycle lifecycle warmup compiles guarded commands without arming or taking ownership',async()=>{
-  const {state,session}=engine();const result=await session.prepareCyclePrimitives();
-  assert.equal(result.compiled,5);assert.equal(result.input_sent,false);
+test('cycle starts with its actual owner without a preliminary warming call',async()=>{
+  const {state,session}=engine();
   assert.equal(state.arms,0);assert.equal(state.disarms,0);assert.equal(state.cycle,false);assert.equal(state.inputs,0);
-  assert.equal(state.lifecycleWarmup,false);
+  const owner=session.claimCycle(Symbol('actual-cycle'));
+  await owner.begin();assert.equal(state.arms,1);assert.equal(state.cycle,true);assert.equal(state.inputs,0);
+  await owner.finish();owner.release();assert.equal(state.armed,false);assert.equal(state.cycle,false);
 });
 
 test('external stop can execute scoped cleanup while blocking the remaining input',async()=>{

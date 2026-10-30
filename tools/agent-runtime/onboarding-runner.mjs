@@ -65,16 +65,23 @@ export async function runPreparedQuest(c){
       if(freshDone(state,c.mission))break;
       if(state.steps?.some(s=>s.uid===step&&s.complete))continue;
       await closeDialogs(c);
-      let gesture;
+      let gesture,acceptedMovement=false;
       for(let i=0;i<5;i++){
         c.check();gesture=await c.bridge.gesture(step==='movement'?'move':'look');
-        c.report.actions.push({role:step,status:gesture.status});
+        c.report.actions.push({role:step,...gesture});
         if(gesture.status==='completed')break;
+        // EndDrag may complete the tutorial even when its short gesture times out.
+        // Accept only a known released result and a fresh completed movement step.
+        if(step==='movement'&&gesture.status==='timeout'&&gesture.released===true){
+          const observed=await c.bridge.watch();
+          if(freshDone(observed,c.mission)||observed.steps?.some(s=>s.uid===step&&s.complete)){
+            acceptedMovement=true;break;
+          }
+        }
         if(!retryable.has(gesture.status))throw Error('control_'+gesture.status);
         await c.wait(100);
       }
-      if(gesture.status!=='completed')throw Error('control_not_ready');
-      if(step==='movement'&&!(gesture.displacement>.005))throw Error('movement_not_observed');
+      if(gesture.status!=='completed'&&!acceptedMovement)throw Error('control_not_ready');
       if(step==='camera'&&!(gesture.look_degrees>.01))throw Error('camera_change_not_observed');
       await c.wait(100);
     }
@@ -106,10 +113,9 @@ export async function runPreparedQuest(c){
 
 export async function prepareQuestHandle({mission,session,bridge,saveReport=async()=>null,wait=sleep,now=()=>performance.now()}){
   if(!MISSIONS.includes(mission)||session.active)throw Error('Supported mission and idle single executor required');
-  await session.begin();
-  try{await bridge.prepare();}finally{try{await bridge.cleanup();}finally{if(session.active)await session.finish();}}
   let running=false,stopped=false;
   return{
+    preparation_mode:'on_demand',
     async run({signal,input}){
       if(running||session.active)throw Error('Executor busy');
       if(signal.aborted)throw Error('Task stopped');
@@ -138,6 +144,7 @@ export async function prepareQuestHandle({mission,session,bridge,saveReport=asyn
 
 export async function prepareOnboardingMission({mission,session,parameterDirectory}){
   const bridge=await createQuestBridge({mission,session,parameterDirectory});
+  await writeFile(join(parameterDirectory,'quest.params'),'observe\n','utf8');
   const evidence=join(parameterDirectory,'evidence');
   const saveReport=async report=>{await mkdir(evidence,{recursive:true});const path=join(evidence,Date.now()+'-'+randomUUID()+'.json');await writeFile(path,JSON.stringify(report,null,2),'utf8');return path;};
   return prepareQuestHandle({mission,session,bridge,saveReport});

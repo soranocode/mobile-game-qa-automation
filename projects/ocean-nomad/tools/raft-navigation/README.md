@@ -15,8 +15,8 @@ are supported; slopes, overlapping floors, ladders, jumps and swimming need othe
        python projects/ocean-nomad/tools/raft-navigation/plan_fast.py SNAPSHOT.json --goals "[[X,Z],[X,Z]]" --cache LOCAL_CACHE.json --out LOCAL_ROUTE.json
 
 3. Import RaftRouteAction from route-action.mjs. Supply an existing FastUiSession,
-   current route-driver.cs.txt source and an absolute local parameterFile. Call
-   prepare() before timing, begin the session, then run(route,{analog:1,seconds:25}).
+   current route-driver.cs.txt source and an absolute local parameterFile. Begin the session, then call run(route,{analog:1,seconds:25}); the
+   command compiles on its first actual use.
    The defaults are analog .85 and 25 seconds; hard limits are 1 and 45 seconds.
    Always finish the session after the subtask. Inspect fresh state after interruption;
    an input call is never automatically replayed.

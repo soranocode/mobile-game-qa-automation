@@ -26,12 +26,6 @@ export class RaftRouteAction {
   constructor(session,{source,parameterFile}) {
     this.session=session;this.code=session.instrument(source);this.parameterFile=parameterFile;this.running=false;
   }
-  async prepare() {
-    if(this.running)throw new Error('Route input is already running');
-    const [,result]=await this.session.batch([exec(`UnityEditor.SessionState.SetString("${KEY}.mode","prepare");return new{input_sent=false};`),exec(this.code)]);
-    if(result?.status!=='compiled_only'||result.input_sent!==false)throw new Error('No-input preparation failed');
-    return result;
-  }
   async stop(){return (await this.session.batch([exec(STOP)],{checkErrors:false}))[0];}
   async run(route,options={}) {
     if(!this.session.active||this.running)throw new Error('A single active Unity session is required');

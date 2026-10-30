@@ -124,6 +124,16 @@
         "ON-UI-SKILLS-001",
         "ON-UI-ERRORWATCH-001"
       ]
+    },
+    "canned_eat": {
+      "first": [
+        "ON-QUEST-CANNED-EAT-001"
+      ],
+      "if_needed": [
+        "ON-UI-INVENTORY-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
     }
   },
   "records": [
@@ -819,7 +829,7 @@
       "path": "missions/ON-QUEST-INTRO-001.md",
       "title": "Сюжетные страницы intro",
       "kind": "mission",
-      "status": "ASSISTED_RUN; Finish correction offline-tested; autonomous repeat pending",
+      "status": "LIVE_DONE_VERIFIED29.10; repeated Finish HUMAN_ACCEPTED29.10, not a defect; on-demand registration",
       "aliases": [
         "intro"
       ],
@@ -830,7 +840,12 @@
       "related_ids": [
         "ON-QUEST-START-001",
         "ON-UI-ERRORWATCH-001"
-      ]
+      ],
+      "human_accepted_behavior": {
+        "date": "2026-10-29",
+        "repeated_finish_allowed": true,
+        "fresh_done_required": true
+      }
     },
     {
       "id": "ON-QUEST-CONTROL-001",
@@ -848,7 +863,22 @@
       "related_ids": [
         "ON-QUEST-START-001",
         "ON-UI-ERRORWATCH-001"
-      ]
+      ],
+      "last_observation": {
+        "date": "2026-10-29",
+        "scope": "cold same-quest recovery, agent verified",
+        "result": "fresh both-step Done plus actual move 0.03825 after tutorial gate released",
+        "failed_attempts_retained": true,
+        "evidence": "brain-store/portable-runtime/admissions/finish-cold-onboarding-2026-10-29/completion-summary.json",
+        "supplemental_move_assessment": "Unnecessary additional verification per direct human clarification 2026-10-29; historical action retained."
+      },
+      "human_success_criterion": {
+        "date": "2026-10-29",
+        "counted_short_movement_sufficient": true,
+        "minimum_displacement_required": false,
+        "supplemental_move_required": false,
+        "fresh_both_step_done_required": true
+      }
     },
     {
       "id": "ON-QUEST-SHARK-ATTACK-001",
@@ -866,14 +896,15 @@
       "related_ids": [
         "ON-QUEST-START-001",
         "ON-UI-ERRORWATCH-001"
-      ]
+      ],
+      "initialization_policy": "On actual mission start, commands on first actual use; changed initialization offline-checked29.10, new live trial not claimed"
     },
     {
       "id": "ON-UI-INVENTORY-001",
       "path": "ui/ON-UI-INVENTORY-001.md",
       "title": "Инвентарь: вход, слоты и операции с предметами",
       "kind": "ui_skill",
-      "status": "AGENT_VERIFIED_SCOPED 2026-10-29; experimental motor; human speed approval pending",
+      "status": "AGENT_VERIFIED_SCOPED; Canned use route human-approved in canned_eat; broader speed and universal handler not approved",
       "aliases": [
         "inventory",
         "инвентарь",
@@ -911,6 +942,29 @@
         "evidence": "brain-store/inventory-learning/2026-10-29/report.json",
         "learning_notes": "episodes/ON-UI-INVENTORY-2026-10-29.md"
       }
+    },
+    {
+      "id": "ON-QUEST-CANNED-EAT-001",
+      "path": "missions/ON-QUEST-CANNED-EAT-001.md",
+      "title": "canned_eat: съесть консервы через навык инвентаря",
+      "kind": "mission",
+      "status": "HUMAN_APPROVED_SCOPED; fast visible route accepted 2026-10-29; reusable packaging offline-checked separately",
+      "aliases": [
+        "canned_eat",
+        "съесть консервы",
+        "миссия с консервами"
+      ],
+      "tags": [
+        "onboarding",
+        "quest",
+        "inventory",
+        "consume"
+      ],
+      "related_ids": [
+        "ON-UI-INVENTORY-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
     }
   ]
 }

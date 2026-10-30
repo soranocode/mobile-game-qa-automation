@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareQuestHandle} from './onboarding-runner.mjs';
+import {prepareQuestHandle,prepareIntroMission,prepareControlMission,prepareWoodenHookMission,prepareSharkAttackMission} from './onboarding-runner.mjs';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {MissionPool,getMissionPool,runMissionSequence} from './mission-pool.mjs';
 import {launchKnownQuest} from './quest-bridge.mjs';
 
-function fixture(mission,{neverDone=false,stationary=false,noAttack=false}={}){
+function fixture(mission,{neverDone=false,shortMovement=false,noAttack=false}={}){
   const events=[];let time=0,page=0,done=false,craft=false,movement=false,camera=false,fightReads=0;
   let checker=()=>{};
   const steps=()=>mission==='control'?[{uid:'movement',complete:movement},{uid:'camera',complete:camera}]:[{uid:mission,complete:done}];
@@ -25,7 +28,7 @@ function fixture(mission,{neverDone=false,stationary=false,noAttack=false}={}){
     },
     async gesture(kind){checker();events.push(kind);
       if(kind==='move')movement=true;else{camera=true;done=true;}
-      return{status:'completed',released:true,displacement:stationary?0:.04,look_degrees:1.2};
+      return{status:'completed',released:true,displacement:shortMovement?.00155:.04,look_degrees:1.2};
     },
     async resetDefense(){events.push('defense.reset');},async startDefense(){events.push('defense.start');},
     async defense(){fightReads++;if(noAttack)return{status:'sleeping',busy:false,attack_epoch:0,outcome:'none'};
@@ -38,11 +41,37 @@ function fixture(mission,{neverDone=false,stationary=false,noAttack=false}={}){
 }
 const run=async f=>{const handler=await prepareQuestHandle(f);return{handler,result:await handler.run({signal:new AbortController().signal})};};
 
-test('intro prepare sends no clicks; run uses Next, Next, Finish and a fresh Done',async()=>{
+test('intro registration sends no Unity commands; run uses Next and Finish with fresh Done',async()=>{
   const f=fixture('intro');const h=await prepareQuestHandle(f);
-  assert.deepEqual(f.events,['begin','prepare','cleanup','finish']);
+  assert.deepEqual(f.events,[]);
   const r=await h.run({signal:new AbortController().signal});
   assert.equal(r.result,'PASS_MISSION');assert.deepEqual(f.events.filter(x=>x.startsWith('story_')),['story_next','story_next','story_finish']);
+});
+
+test('wooden_hook registers without Unity calls and keeps fresh completion and single Create',async()=>{
+  const f=fixture('wooden_hook');const h=await prepareQuestHandle(f);
+  assert.deepEqual(f.events,[]);assert.equal(h.preparation_mode,'on_demand');
+  const result=await h.run({signal:new AbortController().signal});
+  assert.equal(result.result,'PASS_MISSION');assert.equal(f.events.includes('prepare'),false);
+  assert.equal(f.events.filter(x=>x==='craft_create').length,1);assert.equal(f.session.active,false);
+});
+
+test('all actual onboarding factories bind local parameters without touching the transport',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'ocean-cold-factory-'));
+  try{
+    const session={active:false,instrument:source=>source,async batch(){throw Error('No Unity calls during cold handle creation');}};
+    for(const [name,factory] of Object.entries({intro:prepareIntroMission,control:prepareControlMission,wooden_hook:prepareWoodenHookMission,shark_attack:prepareSharkAttackMission})){
+      const parameters=join(directory,name),handler=await factory({session,parameterDirectory:parameters});
+      assert.equal(handler.preparation_mode,'on_demand');assert.equal(await readFile(join(parameters,'quest.params'),'utf8'),'observe\n');
+    }
+  }finally{await rm(directory,{recursive:true,force:true});}
+});
+
+test('on-demand execution still stops unknown input and does not omit cleanup',async()=>{
+  const f=fixture('wooden_hook');let clicks=0;f.bridge.click=async()=>{clicks++;return{status:'pending'};};
+  const h=await prepareQuestHandle(f);
+  const result=await h.run({signal:new AbortController().signal});
+  assert.equal(result.result,'NEEDS_REVIEW');assert.equal(clicks,1);assert.equal(result.input_stopped,true);
 });
 test('Finish acknowledgement alone cannot finish intro',async()=>{
   const {result}=await run(fixture('intro',{neverDone:true}));
@@ -81,11 +110,13 @@ test('intro still stops when a story target is ambiguous rather than replaced',a
   assert.equal(result.result,'NEEDS_REVIEW');assert.equal(clicks,1);
 });
 
-test('intro waits for the delayed Done after Finish without pressing Finish twice',async()=>{
-  const f=fixture('intro'),watch=f.bridge.watch;let reads=0;
+test('accepted repeated Finish during fade still requires a fresh Done',async()=>{
+  const f=fixture('intro'),watch=f.bridge.watch,ui=f.bridge.ui,click=f.bridge.click;let reads=0,finishes=0;
   f.bridge.watch=async()=>{const s=await watch();if(s.done&&++reads<4)return{...s,done:null};return s;};
+  f.bridge.ui=async()=>finishes===1?{story_identity:'fading',story_next:false,story_finish:true}:ui();
+  f.bridge.click=async role=>{if(role==='story_finish')finishes++;return click(role);};
   assert.equal((await run(f)).result.result,'PASS_MISSION');
-  assert.equal(f.events.filter(x=>x==='story_finish').length,1);
+  assert.equal(f.events.filter(x=>x==='story_finish').length,2);
 });
 test('known covered control is retried locally, no whole mission replay',async()=>{
   const f=fixture('intro');const click=f.bridge.click;let blocked=2;
@@ -98,10 +129,36 @@ test('control performs actual movement and camera gestures, requiring both steps
   assert.equal(result.result,'PASS_MISSION');assert.deepEqual(f.events.filter(x=>['move','look'].includes(x)),['move','look']);
   assert.equal(result.done.steps.length,2);
 });
-test('tutorial end-drag without actual movement is not functional success',async()=>{
-  const f=fixture('control',{stationary:true});const {result}=await run(f);
-  assert.equal(result.result,'NEEDS_REVIEW');assert.match(result.reason,/movement_not_observed/);
-  assert.equal(f.events.includes('look'),false);
+test('a short movement counted by the tutorial is accepted without an additional move',async()=>{
+  const f=fixture('control',{shortMovement:true});const {result}=await run(f);
+  assert.equal(result.result,'PASS_MISSION');assert.equal(f.events.filter(e=>e==='move').length,1);
+  assert.equal(f.events.filter(e=>e==='look').length,1);
+});
+
+test('a released movement timeout that completed its current quest step proceeds to Look',async()=>{
+  const f=fixture('control',{shortMovement:true}),gesture=f.bridge.gesture;
+  f.bridge.gesture=async kind=>({...await gesture(kind),status:kind==='move'?'timeout':'completed'});
+  const {result}=await run(f);assert.equal(result.result,'PASS_MISSION');
+  assert.deepEqual(f.events.filter(e=>['move','look'].includes(e)),['move','look']);
+});
+
+test('movement timeout without fresh step completion still stops',async()=>{
+  const f=fixture('control');let gestures=0;
+  f.bridge.gesture=async()=>{gestures++;return{status:'timeout',released:true};};
+  const {result}=await run(f);assert.equal(result.result,'NEEDS_REVIEW');
+  assert.match(result.reason,/control_timeout/);assert.equal(gestures,1);
+});
+
+test('an unknown movement outcome is not excused by a counted step',async()=>{
+  const f=fixture('control'),gesture=f.bridge.gesture;let calls=0;
+  f.bridge.gesture=async kind=>{calls++;return{...await gesture(kind),status:'pending'};};
+  const {result}=await run(f);assert.equal(result.result,'NEEDS_REVIEW');assert.equal(calls,1);
+});
+
+test('completed gestures alone do not replace the final quest step result',async()=>{
+  const f=fixture('control'),gesture=f.bridge.gesture;
+  f.bridge.gesture=async kind=>kind==='move'?{status:'completed',released:true,displacement:.02}:gesture(kind);
+  const {result}=await run(f);assert.equal(result.result,'NEEDS_REVIEW');assert.match(result.reason,/control_steps_incomplete/);
 });
 test('wooden_hook uses Create once, then closes the window before checking Done',async()=>{
   const f=fixture('wooden_hook');const {result}=await run(f);
@@ -130,7 +187,7 @@ test('explicit attack cheat retry is bounded to once',async()=>{
 test('repeats reuse preparation with a fresh observer and release input',async()=>{
   const f=fixture('wooden_hook');const h=await prepareQuestHandle(f);
   await h.run({signal:new AbortController().signal});await h.run({signal:new AbortController().signal});
-  assert.equal(f.events.filter(x=>x==='prepare').length,1);assert.equal(f.events.filter(x=>x==='watch.prepare').length,2);
+  assert.equal(f.events.filter(x=>x==='prepare').length,0);assert.equal(f.events.filter(x=>x==='watch.prepare').length,2);
   assert.equal(f.session.active,false);
 });
 test('unknown click outcome stops immediately without another click',async()=>{

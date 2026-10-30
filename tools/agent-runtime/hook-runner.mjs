@@ -29,6 +29,7 @@ export async function prepareHookMission({session,parameterDirectory}) {
     await writeFile(path,JSON.stringify(report,null,2),'utf8');
     return path;
   };
+  await writeFile(join(parameterDirectory,'quest.params'),'observe\n','utf8');
   return prepareHookHandle({session,bindings,aim,trial:runHookTrial,cycle,queue,saveReport,rebind});
 }
 
@@ -48,19 +49,9 @@ export function compactHookReport(report,evidencePath) {
 // Separate dependency seam: offline tests use fake transport, never an Editor instance.
 export async function prepareHookHandle({session,bindings,aim,trial,cycle,queue,saveReport=async()=>null,rebind=async()=>{}}) {
   if(session.active) throw Error('Single idle executor session required');
-  await session.begin();
-  try {
-    await rebind();
-    await bindings.prepare();
-    await aim.prepare();
-    await bindings.observe('read'); // Warm the exact read command, without game input.
-    await aim.stop();              // Warm cancellation before the timed run.
-  } finally {
-    try { await bindings.observe('stop'); }
-    finally { if(session.active) await session.finish(); }
-  }
   let running=false,stopped=false;
   return {
+    preparation_mode:'on_demand',
     async run({signal}) {
       if(running||session.active) throw Error('Executor busy');
       if(signal.aborted) throw Error('Task stopped');

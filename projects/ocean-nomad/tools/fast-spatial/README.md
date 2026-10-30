@@ -15,13 +15,13 @@ Full launch plus collection:23.597s with3clicks, then21.636s with4clicks. From c
 - hook-cycle.mjs: one aim/click,3s without reads, then up to two1s extensions if still busy. Unknown or busy at5s stops. The4/5s branches have simulated coverage only.
 - hook-queue.mjs: fixed runtime-ID queue with live coordinates; remove another collected quest item, keep current intended item; first attempt plus at least3retries. Empty queue/history alone never proves completion.
 - hook-trial.mjs#runHookTrial: the bounded assistant-selected MCP route and fresh final assertion. A short HUD readiness wait avoids failing while bindings are settling.
-- runtime-bindings.mjs#createHookBindings: exact tested Node input wrappers rebound to a supplied project-guarded session. prepare() warms exact commands, including status/frame reads, with quest input disabled. Bindings require a session already begun and a local parameter file outside Git.
+- runtime-bindings.mjs#createHookBindings: exact tested Node input wrappers rebound to a supplied project-guarded session. Creation only builds local callbacks. Commands compile on first actual use; observer installation happens inside the real run. Input callbacks require a session already begun and a local parameter file outside Git.
 
 The assistant selects the quest/skill; these are bounded MCP actions, not an independent background test or a native MCP service. Only one session/executor owns Unity. Use ordinary session.batch defaults so a new passive error blocks the next action/result. Release input, stop the observer and finish the session on exit. runHookTrial owns cleanup once entered; preparation failures must also be cleaned up by the caller.
 
 ## Restoration in another session
 
-Read the skill contract and selected dependencies, establish the correct local Unity MCP connection using tools/unity-ui, and create the FastUiSession. Load these source files, create AimHookAction and createHookBindings, begin the session, prepare both before activating the quest, then pass the returned callbacks to runHookTrial. New runtime IDs/coordinates come from the current quest. Keep credentials, machine paths and parameter files out of Git. Fresh bootstrap on another PC has not yet been verified; copying the automation does not install the game or Unity.
+Read the skill contract and selected dependencies, establish the correct local Unity MCP connection using tools/unity-ui, and create the FastUiSession. Load these source files, create AimHookAction and createHookBindings, use the local prepareHookMission factory and invoke its run handler for the current task; the handler begins observation and executes commands as needed. New runtime IDs/coordinates come from the current quest. Keep credentials, machine paths and parameter files out of Git. Fresh bootstrap on another PC has not yet been verified; copying the automation does not install the game or Unity.
 
 ## Offline checks
 

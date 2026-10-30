@@ -5,6 +5,7 @@ import {runMissionPipeline} from './pipeline.mjs';
 const onboard=method=>async options=>(await import('./onboarding-runner.mjs'))[method](options);
 export const PREPARERS=Object.freeze({intro:onboard('prepareIntroMission'),control:onboard('prepareControlMission'),
   wooden_hook:onboard('prepareWoodenHookMission'),hook_use:async options=>(await import('./hook-runner.mjs')).prepareHookMission(options),
+  canned_eat:async options=>(await import('../../projects/ocean-nomad/tools/canned-eat/factory.mjs')).prepareCannedEatMission(options),
   shark_attack:onboard('prepareSharkAttackMission')});
 
 export async function prepareSelectedMissions({tasks,session,parameterDirectory,pool=getMissionPool(),factories=PREPARERS}){

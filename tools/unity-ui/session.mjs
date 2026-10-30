@@ -8,9 +8,8 @@ const EXEC = code => ({ tool: 'execute_code', params: { action: 'execute', code,
 const ROLES = new Set(['open_menu', 'open_settings', 'start_new_game', 'confirm_new_game',
   'exit_to_main_menu', 'confirm_exit', 'close_premium', 'close_discord', 'skip_intro_build', 'skip_intro_survive']);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const LIFECYCLE_WARMUP='if(UnityEditor.SessionState.GetBool("QaAgent.FastUi.lifecycle_warmup",false))return new{status="compiled_only",input_sent=false};';
-const cycleSnapshotCode=LIFECYCLE_WARMUP+ERROR_WATCH_SNAPSHOT+'return new{error_watch=errorWatchSnapshot()};';
-const cycleStartCode=`${LIFECYCLE_WARMUP}
+const cycleSnapshotCode=ERROR_WATCH_SNAPSHOT+'return new{error_watch=errorWatchSnapshot()};';
+const cycleStartCode=`
 if(UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)||UnityEditor.SessionState.GetBool("QaAgent.FastUi.cycle_active",false))return new{status="already_active"};
 ${ERROR_WATCH_SNAPSHOT}
 ${armErrorMonitorCode([]).replace(/\bwatch\b/g,'cycleWatchState').replace('return new { armed = true, expected_rules = 0 };','')}
@@ -20,7 +19,7 @@ UnityEditor.SessionState.SetString("QaAgent.FastUi.cycle_owner","__CYCLE_OWNER__
 UnityEditor.SessionState.SetString("QaAgent.FastUi.cycle_error_epoch",(string)cycleWatchState["epoch"]);
 UnityEngine.Application.runInBackground=true;
 return new{status="cycle_begun",error_watch=errorWatchSnapshot()};`;
-const cycleEndCode=`${LIFECYCLE_WARMUP}${ERROR_WATCH_SNAPSHOT}
+const cycleEndCode=`${ERROR_WATCH_SNAPSHOT}
 if(!UnityEditor.SessionState.GetBool("QaAgent.FastUi.cycle_active",false))return new{status="cycle_absent",error_watch=errorWatchSnapshot()};
 if(UnityEditor.SessionState.GetString("QaAgent.FastUi.cycle_owner","")!="__CYCLE_OWNER__")return new{status="cycle_foreign",error_watch=errorWatchSnapshot()};
 var snapshot=errorWatchSnapshot();
@@ -33,7 +32,7 @@ UnityEditor.SessionState.SetString("QaAgent.FastUi.cycle_owner","");
 UnityEditor.SessionState.SetString("QaAgent.FastUi.cycle_error_epoch","");
 ${DISARM_ERROR_MONITOR.replace(/\bwatch\b/g,'cycleDisarmState').replace('return new { disarmed = true };','')}
 return new{status="cycle_finished",error_watch=snapshot};`;
-const beginCode=(held,rules=[])=>`${held?LIFECYCLE_WARMUP:''}const string p = "${PREFIX}";
+const beginCode=(held,rules=[])=>`const string p = "${PREFIX}";
 if (UnityEditor.SessionState.GetBool(p + "active", false)) return new { status = "already_active" };
 ${held?`${ERROR_WATCH_SNAPSHOT}
 var heldWatch=System.AppDomain.CurrentDomain.GetData("QaAgent.ErrorWatch.v1") as System.Collections.Generic.Dictionary<string,object>;
@@ -46,7 +45,7 @@ UnityEngine.Application.runInBackground = true;
 UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
 ${held?'':armErrorMonitorCode(rules).replace('return new { armed = true, expected_rules = '+rules.length+' };','')}
 return new { status = "begun" };`;
-const finishCode=held=>`${held?LIFECYCLE_WARMUP:''}${ERROR_WATCH_SNAPSHOT}
+const finishCode=held=>`${ERROR_WATCH_SNAPSHOT}
 const string p = "${PREFIX}";
 UnityEditor.SessionState.SetInt(p + "sequence", UnityEditor.SessionState.GetInt(p + "sequence", 0) + 1);
 UnityEditor.SessionState.SetString(p + "status", "stopped");
@@ -178,17 +177,6 @@ export class FastUiSession {
     try{return await this.#recovering;}finally{this.#recovering=null;}
   }
 
-  async prepareCyclePrimitives(){
-    this.assertOwner();
-    if(this.active||this.#owner!==null)throw Error('Warm cycle lifecycle before execution');
-    const setting=value=>EXEC(`UnityEditor.SessionState.SetBool("QaAgent.FastUi.lifecycle_warmup",${value});return new{input_sent=false};`);
-    try{
-      const values=await this.batch([setting(true),...this.#lifecycle.map(EXEC)]);
-      if(!values.slice(1).every(v=>v?.status==='compiled_only'))throw Error('Cycle lifecycle preparation was not input-free');
-      return{compiled:5,input_sent:false};
-    }finally{await this.batch([setting(false)],{checkErrors:false});}
-  }
-
   guard(check) {
     if(typeof check!=='function'||this.executionGuard)throw Error('A single cycle guard is required');
     this.executionGuard=check;
@@ -228,16 +216,6 @@ export class FastUiSession {
       throw new NewUnityError(this.errorAlert);
     }
     return values;
-  }
-
-  async prepare() {
-    this.assertOwner();
-    if (this.active||this.#owner!==null) throw new Error('Finish the current UI session before preparing commands');
-    const setWarmup = EXEC(`UnityEditor.SessionState.SetBool("${PREFIX}warmup", true); return new { input_sent = false };`);
-    const results = await this.batch([setWarmup, ...[...ROLES, 'observe'].map(role => EXEC(this.body(role)))]);
-    if (!results.slice(1).every(r => r?.status === 'compiled_only' && r.input_sent === false))
-      throw new Error('Compilation-only preparation did not return the expected guard');
-    return { compiled: ROLES.size + 1, input_sent: false };
   }
 
   async begin({ expectedErrors = [] } = {}) {

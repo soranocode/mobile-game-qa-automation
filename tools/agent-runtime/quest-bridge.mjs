@@ -1,4 +1,4 @@
-// Exact commands are compiled during prepare, then reused with file-backed parameters.
+// Build local command bindings; Unity compiles each command on its first actual use.
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {isAbsolute,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -55,16 +55,15 @@ export const TARGETS=Object.freeze({
 export async function createQuestBridge({mission,session,parameterDirectory}) {
   if(!['intro','control','wooden_hook','shark_attack'].includes(mission)||!isAbsolute(parameterDirectory))throw Error('Unsupported prepared mission or parameter directory');
   await mkdir(parameterDirectory,{recursive:true});
-  const [quest,selected,observer,ui,selector,gesture,reactor,defenseSource]=await Promise.all([
+  const [quest,selected,observer,ui,selector,gesture,defenseSource]=await Promise.all([
     spatial('shark-cheat-click.cs.txt'),spatial('selected-control.cs.txt'),local('quest-observer.cs.txt'),
-    local('known-quest-ui.cs.txt'),local('select-quest-command.cs.txt'),local('control-gesture.cs.txt'),
-    local('../../projects/ocean-nomad/tools/shark-defense/reactor.cs.txt'),local('defense-command.cs.txt')]);
+    local('known-quest-ui.cs.txt'),local('select-quest-command.cs.txt'),local('control-gesture.cs.txt'),local('defense-command.cs.txt')]);
   const parameterFile=join(parameterDirectory,'command.params'),questFile=join(parameterDirectory,'quest.params');
   const bindCode=`UnityEditor.SessionState.SetString("QaAgent.PreparedQuest.params",${JSON.stringify(parameterFile)});UnityEditor.SessionState.SetString("QaAgent.QuestUi.params",${JSON.stringify(questFile)});return new{bound=true,input_sent=false};`;
   const codes={quest:session.instrument(quest),questRead:session.instrument(quest.replace('var role=lines[0];','var role="observe";')),
     click:session.instrument(selected),ui:session.instrument(ui),select:selector,gesture:session.instrument(gesture),
     prepare:session.instrument(observerMode(observer,'prepare')),read:session.instrument(observerMode(observer,'read')),
-    stop:session.instrument(observerMode(observer,'stop')),reactor:session.instrument(reactor),defense:session.instrument(defenseSource)};
+    stop:session.instrument(observerMode(observer,'stop')),defense:session.instrument(defenseSource)};
   let check=()=>{};
   const command=async(code,cleanup=false)=>{if(!cleanup)check();return(await session.batch([exec(code)],{checkErrors:!cleanup}))[0];};
   const select=async(role='',kind='')=>{if(role&&!TARGETS[role])throw Error('Unknown prepared UI role');await writeFile(parameterFile,[mission,TARGETS[role]??'',kind].join('\n'),'utf8');return command(codes.select);};
@@ -92,33 +91,21 @@ export async function createQuestBridge({mission,session,parameterDirectory}) {
   const launch=()=>launchKnownQuest({watch,questState,q},mission);
   return {
     setCheck(fn){check=fn;},bind:()=>command(bindCode),watch,ui:()=>command(codes.ui),click,launch,
-    async prepare(){
-      await writeFile(questFile,'observe\n','utf8');await command(bindCode);await select();
-      await command(codes.quest);await command(codes.questRead);await command(questStatus);await command(fastStatus);
-      await command('UnityEditor.SessionState.SetBool("QaAgent.FastUi.warmup",true);return new{input_sent=false};');
-      try{const compiled=await command(codes.click);if(compiled.status!=='compiled_only')throw Error('unsafe_UI_preparation');}
-      finally{await command('UnityEditor.SessionState.SetBool("QaAgent.FastUi.warmup",false);return new{input_sent=false};');}
-      await command(codes.ui);const prepared=await command(codes.prepare);if(prepared.status!=='prepared')throw Error('observer_'+prepared.status);
-      await command(codes.read);await command(codes.stop);
-      if(mission==='control'){
-        // Compile every mode selector now; the gesture body itself is one cached command.
-        for(const mode of ['run','snapshot','stop','prepare'])await command(motorMode(mode));
-        await command(codes.gesture);
-      }
-      if(mission==='shark_attack'){
-        await defense.prepareDefense(session);
-        await command('UnityEditor.SessionState.SetBool("QaAgent.SharkDefense.require_melee",true);return new{input_sent=false};');
-        await defenseAction('read');await defenseAction('disarm');
-      }
-      return{status:'prepared_no_input'};
-    },
     async beginWatch(){await command(bindCode);await select();const r=await command(codes.prepare);if(r.status!=='prepared')throw Error('observer_'+r.status);return r;},
     async gesture(kind){
       await select('',kind);let state=await motor('run');const until=performance.now()+1800;
       while(state.status==='running'&&performance.now()<until){await pause(25);state=await motor('snapshot');}
       if(state.status==='running'){await motor('stop',true);throw Error('gesture_timeout');}return state;
     },
-    async resetDefense(){await command(codes.reactor);return defenseAction('disarm');},
+    async resetDefense(){
+      // The combat delegates are required runtime state, installed only for a real shark mission.
+      // Keep the cycle error baseline and stop guard active during their installation.
+      const guardedSession={instrument:source=>session.instrument(source),errors:session.errors,
+        batch:commands=>session.batch(commands,{checkErrors:true,checkGuard:true})};
+      await defense.prepareDefense(guardedSession);
+      await command('UnityEditor.SessionState.SetBool("QaAgent.SharkDefense.require_melee",true);return new{input_sent=false};');
+      return defenseAction('disarm');
+    },
     async startDefense(){const r=await defenseAction('arm');if(r.status==='review_required')throw Error('defense_review_required');return defenseAction('defend');},
     defense:()=>defenseAction('read'),
     async forceAttack(){
