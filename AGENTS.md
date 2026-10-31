@@ -44,3 +44,8 @@ The active direction is Ocean Nomad automation in Unity Editor on the PC. Learne
 - Use brain/agents/ROLE_HANDOFF.md for task/stop/result transfer. Stop and cleanup go to the existing executor; do not take over its connection. Architecture edits and offline fake-transport checks do not authorize gameplay.
 - Stop/invalidate on user stop, source/Unity epoch/context changes, unexpected errors or unknown input outcome. Do not truncate critical constraints to meet a context budget.
 - Definitions: `.codex/agents/`; Cursor bridge: `.cursor/agents/ocean-memory.md`. Detailed setup/limits: `brain/agents/PROTOCOL.md` (read for setup, not each familiar action).
+
+## Cursor delegation
+
+- Delegate independent offline automation code analysis, review and patch proposals through tools/cursor-bridge/delegate.py; see docs/CURSOR_DELEGATION.md. Supply only the current goal, selected files and acceptance criteria. Cursor receives a separate snapshot, not the full chat.
+- Cursor returns a proposal. The coordinator checks source freshness, reviews and tests the change before applying it. Cursor is not a Unity controller; the existing game executor keeps sole runtime ownership.
