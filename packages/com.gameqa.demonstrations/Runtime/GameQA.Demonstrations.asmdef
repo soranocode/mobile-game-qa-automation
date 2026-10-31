@@ -1,0 +1,12 @@
+{
+  "name": "GameQA.Demonstrations",
+  "rootNamespace": "QaDemonstrations",
+  "references": [
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "defineConstraints": [
+    "UNITY_EDITOR"
+  ],
+  "autoReferenced": true
+}

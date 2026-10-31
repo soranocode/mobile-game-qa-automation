@@ -1,0 +1,140 @@
+// C#6 MCP body. Steers an ordinary UI stick; never writes actor transforms/game state.
+// SessionState QaAgent.RaftRoute.v1: mode=prepare|run|snapshot|stop; params=local text file.
+// Protocol lines: scene; deckY; timeout<=45; maxAnalog<=1; tolerance; speed estimate;
+// points(x,z;...); safe rectangles(x0,z0,x1,z1;...); floor collider IDs; geometry revision;
+// expected floors(id,minx,miny,minz,maxx,maxy,maxz;...). Host never replays an input call.
+const string key="QaAgent.RaftRoute.v1";
+var request=UnityEditor.SessionState.GetString(key+".request","");
+var mode=UnityEditor.SessionState.GetString(key+".mode","snapshot");
+if(mode=="prepare")return new{status="compiled_only",input_sent=false};
+__ERROR_WATCH_SETUP__
+var old=System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if(mode=="snapshot")return old==null?(object)new{status="idle"}:old["result"];
+if(mode=="stop"){if(old!=null&&!(bool)old["finished"])((System.Action)old["cancel"])();return old==null?(object)new{status="idle"}:old["result"];}
+if(mode!="run")return new{status="invalid_mode"};
+var priority=System.AppDomain.CurrentDomain.GetData("QaAgent.SharkDefense.v1") as System.Collections.Generic.Dictionary<string,object>;
+if(!key.StartsWith("QaAgent.Shark")&&priority!=null&&(bool)priority["busy"])return new{status="preempted_shark"};
+if(old!=null&&!(bool)old["finished"])return new{status="already_running"};
+if(errorWatchBlocked())return new{status="blocked_new_error",error_watch=errorWatchSnapshot()};
+if(!UnityEditor.EditorApplication.isPlaying||UnityEditor.EditorApplication.isPaused||!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false))return new{status="not_active"};
+var lines=System.IO.File.ReadAllLines(UnityEditor.SessionState.GetString(key+".params",""));
+var culture=System.Globalization.CultureInfo.InvariantCulture;
+System.Func<string,float> number=s=>float.Parse(s,culture);
+var scene=int.Parse(lines[0],culture);var deck=number(lines[1]);var timeout=number(lines[2]);var maxAnalog=number(lines[3]);var tolerance=number(lines[4]);var speedEstimate=number(lines[5]);
+var points=lines[6].Split(';').Select(s=>s.Split(',').Select(number).ToArray()).ToArray();
+var rects=lines[7].Split(';').Select(s=>s.Split(',').Select(number).ToArray()).ToArray();
+var floorIds=new System.Collections.Generic.HashSet<int>(lines[8].Split(',').Select(s=>int.Parse(s,culture)));
+if(timeout<=0||timeout>45||maxAnalog<=0||maxAnalog>1||tolerance<.025f||tolerance>.12f||speedEstimate<1||speedEstimate>10||points.Length<2||points.Length>256||rects.Length>512||points.Any(p=>p.Length!=2||p.Any(v=>float.IsNaN(v)||float.IsInfinity(v)))||rects.Any(r=>r.Length!=4||r.Any(v=>float.IsNaN(v)||float.IsInfinity(v))))return new{status="invalid_parameters"};
+var movement=UnityEngine.Object.FindObjectOfType<Survival.Views.Movement>();
+var hud=UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+var es=UnityEngine.EventSystems.EventSystem.current;
+if(movement==null||hud==null||hud.MoveTouchpad==null||es==null||movement.gameObject.scene.handle!=scene)return new{status="source_changed"};
+var cc=movement.GetComponent<UnityEngine.CharacterController>();var stick=hud.MoveTouchpad;
+if(cc==null||stick.Block||stick.IsDragging||!stick.gameObject.activeInHierarchy)return new{status="control_unavailable"};
+// COLLISION_POLICY_BEGIN
+System.Func<UnityEngine.Collider,bool> collisionEnabled=c=>c!=null&&c.enabled&&!c.isTrigger&&c.gameObject.activeInHierarchy&&!UnityEngine.Physics.GetIgnoreLayerCollision(cc.gameObject.layer,c.gameObject.layer)&&!UnityEngine.Physics.GetIgnoreCollision(cc,c);
+// COLLISION_POLICY_END
+int collisionMask=0,collisionLayer=cc.gameObject.layer;
+System.Action refreshCollisionMask=()=>{collisionLayer=cc.gameObject.layer;collisionMask=0;for(int layer=0;layer<32;layer++)if(!UnityEngine.Physics.GetIgnoreLayerCollision(collisionLayer,layer))collisionMask|=1<<layer;};
+refreshCollisionMask();
+var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic;
+var radiusField=stick.GetType().GetField("_radius",flags);var radius=radiusField==null?0:(float)radiusField.GetValue(stick);
+if(radius<=0)return new{status="stick_radius_unknown"};
+var rect=stick.GetComponent<UnityEngine.RectTransform>();var canvas=stick.GetComponentInParent<UnityEngine.Canvas>();
+var view=UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().FirstOrDefault(w=>w.GetType().Name=="GameView");
+if(rect==null||canvas==null||view==null)return new{status="view_source_unknown"};
+var floors=UnityEngine.Object.FindObjectsByType<UnityEngine.BoxCollider>(UnityEngine.FindObjectsSortMode.None).Where(c=>floorIds.Contains(c.GetInstanceID())).ToArray();
+if(floors.Length!=floorIds.Count)return new{status="geometry_changed"};
+var expectedFloors=lines[10].Split(';').Select(s=>s.Split(',')).ToArray();
+foreach(var floor in floors){var expected=expectedFloors.FirstOrDefault(f=>int.Parse(f[0],culture)==floor.GetInstanceID());if(expected==null||expected.Length!=7)return new{status="invalid_floor_binding"};var b=floor.bounds;if((b.min-new UnityEngine.Vector3(number(expected[1]),number(expected[2]),number(expected[3]))).sqrMagnitude>.000001f||(b.max-new UnityEngine.Vector3(number(expected[4]),number(expected[5]),number(expected[6]))).sqrMagnitude>.000001f)return new{status="geometry_changed"};}
+var floorBounds=floors.Select(c=>c.bounds).ToArray();
+int supportMask=0;foreach(var floor in floors)supportMask|=1<<floor.gameObject.layer;
+System.Func<float,float,bool> inside=(x,z)=>rects.Any(r=>x>=r[0]-.00001f&&x<=r[2]+.00001f&&z>=r[1]-.00001f&&z<=r[3]+.00001f);
+// Exact line clipping over the union; no sampled shortcut across a hole.
+System.Func<UnityEngine.Vector2,UnityEngine.Vector2,bool> clear=(a,b)=>{
+    var intervals=new System.Collections.Generic.List<UnityEngine.Vector2>();var delta=b-a;
+    foreach(var r in rects){float lo=0,hi=1;for(int axis=0;axis<2;axis++){var start=axis==0?a.x:a.y;var d=axis==0?delta.x:delta.y;var lower=r[axis];var upper=r[axis+2];if(UnityEngine.Mathf.Abs(d)<.000001f){if(start<lower-.00001f||start>upper+.00001f){hi=-1;break;}}else{var u=(lower-start)/d;var v=(upper-start)/d;lo=UnityEngine.Mathf.Max(lo,UnityEngine.Mathf.Min(u,v));hi=UnityEngine.Mathf.Min(hi,UnityEngine.Mathf.Max(u,v));}}if(hi>=lo)intervals.Add(new UnityEngine.Vector2(lo,hi));}
+    float end=0;foreach(var interval in intervals.OrderBy(v=>v.x)){if(interval.x>end+.000001f)return false;end=UnityEngine.Mathf.Max(end,interval.y);if(end>=.999999f)return true;}return false;
+};
+var initial=movement.Position;
+if(!cc.isGrounded||!inside(initial.x,initial.z))return new{status="start_outside_region"};
+if(UnityEngine.Vector2.Distance(new UnityEngine.Vector2(initial.x,initial.z),new UnityEngine.Vector2(points[0][0],points[0][1]))>.13f)return new{status="stale_route_start"};
+for(int n=1;n<points.Length;n++)if(!clear(new UnityEngine.Vector2(points[n-1][0],points[n-1][1]),new UnityEngine.Vector2(points[n][0],points[n][1])))return new{status="unsafe_route_segment",index=n};
+view.Focus();view.Repaint();
+UnityEngine.EventSystems.PointerEventData pointer=null;
+foreach(var offset in new[]{new UnityEngine.Vector2(-.4f,-.4f),new UnityEngine.Vector2(-.4f,0),new UnityEngine.Vector2(-.25f,-.3f),UnityEngine.Vector2.zero}){
+    var local=rect.rect.center+new UnityEngine.Vector2(rect.rect.width*offset.x,rect.rect.height*offset.y);
+    var point=UnityEngine.RectTransformUtility.WorldToScreenPoint(canvas.renderMode==UnityEngine.RenderMode.ScreenSpaceOverlay?null:canvas.worldCamera,rect.TransformPoint(local));
+    var data=new UnityEngine.EventSystems.PointerEventData(es){position=point,pressPosition=point,pointerId=-85,button=UnityEngine.EventSystems.PointerEventData.InputButton.Left,useDragThreshold=false};
+    var hits=new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();es.RaycastAll(data,hits);
+    if(hits.Count==0||UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IDragHandler>(hits[0].gameObject)!=stick.gameObject)continue;
+    data.pointerCurrentRaycast=hits[0];data.pointerPressRaycast=hits[0];data.pointerPress=stick.gameObject;data.rawPointerPress=hits[0].gameObject;pointer=data;break;
+}
+if(pointer==null)return new{status="control_covered"};
+int generation=UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence",0),index=1,lastFrame=-1,ticks=0,groundedTicks=0,gestureCount=0,settleFrame=-1,settleRetries=0;
+double began=UnityEditor.EditorApplication.timeSinceStartup,lastTick=began,lastSample=began,lastGeometry=began,lastProgress=began,inputAt=-1;
+var lastPosition=initial;var progressPosition=initial;float travelled=0;bool finished=false,pressed=false,dragging=false;
+object stopDetail=null;
+var samples=new System.Collections.Generic.List<object>();var overlaps=new UnityEngine.Collider[64];
+var state=new System.Collections.Generic.Dictionary<string,object>{{"finished",false},{"result",new{status="running",request=request,input_sent=false}}};
+System.AppDomain.CurrentDomain.SetData(key,state);
+UnityEditor.EditorApplication.CallbackFunction update=null;
+System.Action release=()=>{pointer.delta=UnityEngine.Vector2.zero;try{if(dragging&&stick!=null)UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.endDragHandler);}finally{dragging=false;try{if(pressed&&stick!=null)UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);}finally{pressed=false;}}};
+System.Action<string> publish=status=>{var p=movement==null?lastPosition:movement.Position;state["result"]=new{status=status,request=request,input_sent=inputAt>=0,released=!dragging&&!pressed,index=index,total=points.Length,elapsed=System.Math.Round(UnityEditor.EditorApplication.timeSinceStartup-began,3),position=new[]{p.x,p.y,p.z},travelled=travelled,ticks=ticks,grounded_ticks=groundedTicks,mean_speed=travelled/System.Math.Max(.001,UnityEditor.EditorApplication.timeSinceStartup-began),gestures=gestureCount,geometry_revision=lines[9],stop_detail=stopDetail,samples=samples.ToArray(),error_watch=errorWatchSnapshot()};};
+System.Action<string> finish=status=>{if(finished)return;finished=true;if(update!=null)UnityEditor.EditorApplication.update-=update;try{release();}finally{state["finished"]=true;publish(status);}};
+state["cancel"]=(System.Action)(()=>finish("cancelled"));
+update=()=>{if(finished)return;try{
+    var now=UnityEditor.EditorApplication.timeSinceStartup;
+    if(errorWatchBlocked()){finish("blocked_new_error");return;}
+    if(!UnityEditor.EditorApplication.isPlaying||UnityEditor.EditorApplication.isPaused||!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)||generation!=UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence",0)){finish("cancelled");return;}
+    if(movement==null||cc==null||stick==null||movement.gameObject.scene.handle!=scene){finish("scene_changed");return;}
+    if(view==null||UnityEditor.EditorWindow.focusedWindow!=view){finish("focus_lost");return;}
+    if(stick.Block||!stick.gameObject.activeInHierarchy){finish("control_changed");return;}
+    if(now-began>timeout){finish("time_budget");return;}
+    if(UnityEngine.Time.frameCount==lastFrame){UnityEditor.EditorApplication.QueuePlayerLoopUpdate();return;}lastFrame=UnityEngine.Time.frameCount;
+    var p=movement.Position;var distanceMoved=UnityEngine.Vector2.Distance(new UnityEngine.Vector2(p.x,p.z),new UnityEngine.Vector2(lastPosition.x,lastPosition.z));
+    travelled+=distanceMoved;lastTick=now;lastPosition=p;ticks++;
+    if(!cc.isGrounded){finish("not_grounded");return;}groundedTicks++;
+    if(!inside(p.x,p.z)){finish("outside_planned_region");return;}
+    if(now-lastGeometry>.2||collisionLayer!=cc.gameObject.layer){for(int f=0;f<floors.Length;f++)if(floors[f]==null||!floors[f].enabled||!floors[f].gameObject.activeInHierarchy||(floors[f].bounds.center-floorBounds[f].center).sqrMagnitude>.000001f||(floors[f].bounds.size-floorBounds[f].size).sqrMagnitude>.000001f){finish("geometry_changed");return;}refreshCollisionMask();lastGeometry=now;}
+    if(now-lastSample>.1){samples.Add(new{t=System.Math.Round(now-began,3),p=new[]{p.x,p.y,p.z},index=index,grounded=cc.isGrounded});lastSample=now;publish("running");}
+    if((p-progressPosition).sqrMagnitude>.0025f){progressPosition=p;lastProgress=now;}else if(inputAt>=0&&now-lastProgress>1.2){finish("movement_stalled");return;}
+    while(index<points.Length&&UnityEngine.Vector2.Distance(new UnityEngine.Vector2(p.x,p.z),new UnityEngine.Vector2(points[index][0],points[index][1]))<tolerance)index++;
+    if(index>=points.Length){
+        if(settleFrame<0){release();settleFrame=UnityEngine.Time.frameCount;}
+        if(UnityEngine.Time.frameCount-settleFrame<4){UnityEditor.EditorApplication.QueuePlayerLoopUpdate();return;}
+        var finalDistance=UnityEngine.Vector2.Distance(new UnityEngine.Vector2(p.x,p.z),new UnityEngine.Vector2(points[points.Length-1][0],points[points.Length-1][1]));
+        if(finalDistance<=tolerance+.02f){finish("completed");return;}
+        if(++settleRetries>2){finish("goal_not_settled");return;}
+        index=points.Length-1;settleFrame=-1;lastProgress=now;progressPosition=p;
+    }
+    var target=new UnityEngine.Vector2(points[index][0],points[index][1]);var pos=new UnityEngine.Vector2(p.x,p.z);
+    // Follow a short visible portion of the next leg, without cutting across missing support.
+    if(index+1<points.Length&&UnityEngine.Vector2.Distance(pos,target)<.45f){var next=new UnityEngine.Vector2(points[index+1][0],points[index+1][1]);var look=UnityEngine.Vector2.MoveTowards(target,next,.22f);if(clear(pos,look)){target=look;if(UnityEngine.Vector2.Distance(pos,new UnityEngine.Vector2(points[index][0],points[index][1]))<.28f)index++;}}
+    if(!clear(pos,target)){finish("route_no_longer_clear");return;}
+    var delta=target-pos;var distance=delta.magnitude;if(distance<.001f){finish("invalid_target");return;}
+    var heading=movement.CameraForward;var length=UnityEngine.Mathf.Sqrt(heading.x*heading.x+heading.z*heading.z);if(length<.01f){finish("camera_heading_unknown");return;}
+    float fx=heading.x/length,fz=heading.z/length;
+    var nearTurn=index<points.Length-1&&UnityEngine.Vector2.Distance(pos,new UnityEngine.Vector2(points[index][0],points[index][1]))<.5f;
+    var analog=UnityEngine.Mathf.Min(maxAnalog,UnityEngine.Mathf.Max(.08f,distance/(index==points.Length-1?.60f:.25f)));
+    if(settleRetries>0)analog=UnityEngine.Mathf.Min(analog,.2f);
+    if(nearTurn)analog=UnityEngine.Mathf.Min(analog,.65f);
+    var dt=UnityEngine.Mathf.Clamp(UnityEngine.Time.unscaledDeltaTime,.015f,.12f);
+    var predicted=pos+delta.normalized*UnityEngine.Mathf.Min(distance,speedEstimate*analog*(dt+.035f));
+    if(!clear(pos,predicted)){finish("predicted_edge_crossing");return;}
+    // Current support and a body capsule at the next physical step detect stale/dynamic geometry.
+    UnityEngine.RaycastHit support;
+    if(!UnityEngine.Physics.Raycast(new UnityEngine.Vector3(predicted.x,deck+.45f,predicted.y),UnityEngine.Vector3.down,out support,.7f,supportMask,UnityEngine.QueryTriggerInteraction.Ignore)||!floorIds.Contains(support.collider.GetInstanceID())){finish("support_changed");return;}
+    var body=movement.transform.TransformPoint(cc.center)+new UnityEngine.Vector3(predicted.x-p.x,0,predicted.y-p.z);var bodyRadius=cc.radius*UnityEngine.Mathf.Max(UnityEngine.Mathf.Abs(movement.transform.lossyScale.x),UnityEngine.Mathf.Abs(movement.transform.lossyScale.z));
+    var half=cc.height*UnityEngine.Mathf.Abs(movement.transform.lossyScale.y)*.5f-bodyRadius;
+    var count=UnityEngine.Physics.OverlapCapsuleNonAlloc(body+UnityEngine.Vector3.up*half,body-UnityEngine.Vector3.up*half,bodyRadius+.025f,overlaps,collisionMask,UnityEngine.QueryTriggerInteraction.Ignore);
+    if(count>=overlaps.Length){finish("collision_buffer_full");return;}
+    for(int c=0;c<count;c++){var hit=overlaps[c];if(!collisionEnabled(hit)||floorIds.Contains(hit.GetInstanceID())||hit.GetComponentInParent<Survival.Views.Movement>()==movement)continue;stopDetail=new{collider_id=hit.GetInstanceID(),name=hit.name,parent=hit.transform.parent==null?null:hit.transform.parent.name,layer=UnityEngine.LayerMask.LayerToName(hit.gameObject.layer),type=hit.GetType().Name,predicted=new[]{predicted.x,predicted.y}};finish("dynamic_obstacle");return;}
+    if(!pressed){pressed=true;inputAt=now;gestureCount++;UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);dragging=true;pointer.dragging=true;pointer.pointerDrag=stick.gameObject;UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.initializePotentialDrag);UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.beginDragHandler);}
+    var move=new UnityEngine.Vector2((delta.x*fz-delta.y*fx)/distance,(delta.x*fx+delta.y*fz)/distance)*analog;
+    pointer.delta=move*radius;pointer.position=pointer.pressPosition+pointer.delta;
+    UnityEngine.EventSystems.ExecuteEvents.Execute(stick.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.dragHandler);
+    UnityEditor.EditorApplication.QueuePlayerLoopUpdate();view.Repaint();
+}catch{finish("executor_exception");}};
+UnityEditor.EditorApplication.update+=update;
+return new{status="running",request=request,input_sent=false,points=points.Length,timeout=timeout};

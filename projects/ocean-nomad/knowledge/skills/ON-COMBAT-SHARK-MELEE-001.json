@@ -1,0 +1,69 @@
+{
+  "id": "ON-COMBAT-SHARK-MELEE-001",
+  "kind": "approved_game_skill",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0 dev",
+  "runtime": "UnityEditor6000.0.66f2",
+  "status": "HUMAN_APPROVED_SCOPED",
+  "updated_at": "2026-10-26",
+  "human_approval": {
+    "source": "human_user",
+    "quote": "да отлично",
+    "scope": "Последний реальный подход и отгон акулы крюком Hook; не все виды оружия/плоты/возобновление произвольных задач"
+  },
+  "intent": "После сигнала нападения подойти по настилу и обычным использованием оружия ближнего боя нанести урон до подтверждённого отступления",
+  "entry_point": "projects/ocean-nomad/tools/shark-defense/install.mjs#defendCurrentAttack",
+  "passive_entry": "То же тело боя вызывается reactor.cs.txt на SharkAttacked(true) или лог Showing alert SharkAttack с живым флагом",
+  "parameters": {
+    "enemy": "Новый живой SharkAISystem с AttackRaft и текущие коллайдеры; ID/позиции только из данной атаки",
+    "weapon": "В проверенном эпизоде Hook; текущая загруженная модель Range1.1",
+    "world": "Свежие опорные foundation и obstacle bounds, player и camera heading"
+  },
+  "preconditions": [
+    "Один владелец ввода Unity MCP",
+    "Прогретые route/aim/motor/close/back/plan/outcome",
+    "Доступен Hook; выбран обычной UI-кнопкой secondary→primary",
+    "Play/Game, источник атаки валиден, нет новой необъяснённой красной ошибки"
+  ],
+  "execution": [
+    "Немедленно заморозить смысловой checkpoint и отменить текущий ввод",
+    "Закрыть известные мешающие окна обычными Close/Back без принятия покупок/удаления данных",
+    "Ранний alert может прийти, когда модель акулы ещё далеко: идти по настилу к атакуемой foundation, затем уточнить реальную позицию для удара",
+    "При физически поддержанном старте снаружи дополнительного запаса — ограниченные .05–.16с жесты с отдельно проверенным путём восстановления; не подменять координату старта",
+    "Пройти живой путь непрерывным UI-джойстиком; Look на актуальный hit point",
+    "Проверить тот же camera SphereCast radius .33 и реальный Range; ordinary primary hold ≤1.2с, повторить до исхода",
+    "Остановить ввод после retreat + HP damage; исчезновение надписи и окончание таймера не успех"
+  ],
+  "verification": {
+    "observed_weapon": "Hook",
+    "range": 1.1,
+    "damage_events": 6,
+    "damage_total": 27,
+    "hp_start": 100,
+    "hp_end": 73,
+    "first_damage_after_wake_seconds": 2.743278,
+    "total_after_wake_seconds": 9.3234948,
+    "outcome": "repelled",
+    "new_errors": 0,
+    "grounded_at_end": true,
+    "input_released": true
+  },
+  "limits": [
+    "Копьё ещё не проверено живым прогоном",
+    "Фоновая реакция/бой проверены; восстановление произвольной UI-задачи требует зарегистрированного PriorityTask и смысловой resume-функции",
+    "Нельзя повторно запускать уже активный shark_attack; source атаки не часть критерия обнаружения",
+    "Новые красные ошибки по правилу человека останавливают ввод до разбора, не игнорируются ради боя"
+  ],
+  "knowledge_dependencies": [
+    "ON-SAFETY-SHARK-DEFENSE-001",
+    "ON-ENEMY-SHARK-001",
+    "ON-MECH-MELEE-001",
+    "ON-NAV-RAFT-001",
+    "ON-CONTROL-MOVE-LOOK-001",
+    "ON-UI-ERRORWATCH-001"
+  ],
+  "evidence": {
+    "availability": "local_only_outside_automation_repository",
+    "reference": "outputs/unity-mcp/shark-defense/2026-10-26T08-27-00-043Z/approved-melee-result.json"
+  }
+}

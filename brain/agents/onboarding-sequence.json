@@ -1,0 +1,38 @@
+{
+  "schema": "ocean-onboarding-sequence/1",
+  "id": "learned-onboarding",
+  "updated_at": "2026-10-29",
+  "scope": "Current learned and packaged missions, Ocean Nomad 2.11.0 dev, Unity Editor",
+  "mission_order": [
+    "intro",
+    "control",
+    "wooden_hook",
+    "hook_use",
+    "canned_eat",
+    "shark_attack"
+  ],
+  "deferred": [
+    {
+      "mission": "hands_collect",
+      "reason": "Human deferred this mission after the Editor activation problem; no prepared handler in the current catalog. Not a passed or executed step."
+    }
+  ],
+  "prepare_entry_point": "tools/portable/runtime.mjs#prepareMissions",
+  "execute_entry_point": "tools/portable/runtime.mjs#runPipeline",
+  "instructions": "brain/agents/ONBOARDING_RUN.md",
+  "execution_authorized": false,
+  "lookahead": 2,
+  "mission_order_meaning": "Prepared callable subset; not a complete release sequence. hook_use -> canned_eat is confirmed by the human and local source; later selected shark_attack does not assert the next release quest.",
+  "release_sequence_complete": false,
+  "release_order_edges": [
+    {
+      "from": "hook_use",
+      "to": "canned_eat",
+      "status": "HUMAN_REPORTED_RELEASE_AND_LOCAL_SOURCE_CONFIRMED",
+      "source": "human_user 2026-10-29; QuestChainDatabase.asset Node3->Node173",
+      "knowledge_id": "ON-QUEST-CANNED-EAT-001"
+    }
+  ],
+  "known_not_prepared": [],
+  "command_policy": "Register handlers locally; execute and compile commands on first actual use. No separate preliminary execution stage."
+}

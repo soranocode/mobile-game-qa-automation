@@ -1,0 +1,17 @@
+// Parameters are data. One fixed compiled body for every target and gesture.
+var path=UnityEditor.SessionState.GetString("QaAgent.PreparedQuest.params","");
+// Preserve the empty final kind field; ReadAllLines drops it after a trailing newline.
+var lines=System.IO.File.ReadAllText(path).Replace("\r\n","\n").Split(new[]{'\n'},System.StringSplitOptions.None);
+if(lines.Length==4&&lines[3]=="")System.Array.Resize(ref lines,3);
+if(lines.Length!=3||!new[]{"intro","control","wooden_hook","shark_attack"}.Contains(lines[0]))return new{status="invalid_parameters"};
+var allowed=new[]{"","CanvasInterface/StoryboardWindow/Next","CanvasInterface/StoryboardWindow/Finish",
+ "CanvasController/DialogWindow/Content/Buttons/DialogChoiceButton(Clone)",
+ "CanvasController/PlayerScreen/SafeArea/UIHudInterfaceButtonsPanel/UIHudInterfaceCraft",
+ "CanvasInterface/Craft/Container/Second/CraftStudiedInfoPanel/ShowRecipePanel/Craft/Craft/UIButtonCraftCommon",
+ "CanvasInterface/Craft/SafeArea/RootNavigationWidget/CloseButton",
+ "CanvasController/PlayerScreen/SafeArea/UIHudControlsPanel/Buttons/UIControlsButton2"};
+if(!allowed.Contains(lines[1])||!new[]{"","move","look"}.Contains(lines[2]))return new{status="invalid_target"};
+UnityEditor.SessionState.SetString("QaAgent.PreparedQuest.uid",lines[0]);
+UnityEditor.SessionState.SetString("QaAgent.FastUi.target_path",lines[1]);
+UnityEditor.SessionState.SetString("QaAgent.PreparedControl.kind",lines[2]);
+return new{status="selected",input_sent=false};

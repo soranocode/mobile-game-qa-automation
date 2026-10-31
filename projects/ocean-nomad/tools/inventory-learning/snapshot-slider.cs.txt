@@ -1,0 +1,1 @@
+var go=UnityEngine.GameObject.Find("CanvasController/SplitItemView/Main/Slider/SliderGraphics");if(go==null)return new{status="missing"};var s=go.GetComponent<UnityEngine.UI.Slider>();if(s==null)return new{status="missing_slider"};return new{status="ready",min=s.minValue,max=s.maxValue,value=s.value,whole=s.wholeNumbers};

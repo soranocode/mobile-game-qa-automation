@@ -1,0 +1,37 @@
+if (UnityEditor.EditorApplication.isPlaying || QaDemonstrations.DemoCapture.IsRecording) throw new System.InvalidOperationException("Idle Editor required");
+var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static;
+var obs=typeof(QaDemonstrations.OceanNomadTelemetry).Assembly.GetType("QaDemonstrations.OceanNomadObservation");
+var movement=obs.GetField("movement",flags);var refresh=obs.GetField("refreshAt",flags);
+var mod=typeof(QaDemonstrations.OceanNomadTelemetry);var items=mod.GetField("pickables",flags);
+var oldMovement=movement.GetValue(null);var oldRefresh=refresh.GetValue(null);var oldItems=items.GetValue(null);
+var active=UnityEngine.SceneManagement.SceneManager.GetActiveScene();var dirty=active.isDirty;
+var preview=UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();
+UnityEngine.GameObject root=null,player=null,target=null;
+try{
+root=new UnityEngine.GameObject("synthetic reference frame");player=new UnityEngine.GameObject("synthetic player");target=new UnityEngine.GameObject("synthetic target");
+foreach(var go in new[]{root,player,target}){go.hideFlags=UnityEngine.HideFlags.HideAndDontSave;UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go,preview);}
+root.transform.position=new UnityEngine.Vector3(100,0,50);root.transform.rotation=UnityEngine.Quaternion.Euler(0,90,0);root.transform.localScale=new UnityEngine.Vector3(2,1,2);
+player.transform.SetParent(root.transform,false);player.transform.localPosition=new UnityEngine.Vector3(1,0,1);
+target.transform.SetParent(root.transform,false);target.transform.localPosition=new UnityEngine.Vector3(2,0,1);
+var collider=target.AddComponent<UnityEngine.BoxCollider>();collider.center=new UnityEngine.Vector3(0,0.5f,0);
+movement.SetValue(null,player.transform);refresh.SetValue(null,UnityEngine.Time.unscaledTime+1000f);items.SetValue(null,new UnityEngine.Component[]{target.transform});
+var read=mod.GetMethod("ReadSpatial",flags);
+System.Func<object,object,object> at=(obj,key)=>obj.GetType().GetProperty("Item",new[]{key.GetType()}).GetValue(obj,new[]{key});
+System.Func<object,double> number=obj=>double.Parse(obj.ToString(),System.Globalization.CultureInfo.InvariantCulture);
+var first=read.Invoke(null,new object[]{null,null,32});var one=at(at(first,"targets"),0);
+var local=at(one,"position_in_player_parent");
+bool localCorrect=System.Math.Abs(number(at(local,0))-2)<0.001&&System.Math.Abs(number(at(local,2))-1)<0.001;
+bool frameCorrect=at(at(first,"player"),"parent_instance_id").ToString()==root.transform.GetInstanceID().ToString();
+bool colliderAim=at(one,"aim_source").ToString()=="collider_bounds_center";
+var firstWorldX=number(at(at(one,"position_world"),0));
+root.transform.position+=new UnityEngine.Vector3(5,0,0);
+var second=read.Invoke(null,new object[]{null,null,32});var two=at(at(second,"targets"),0);
+bool followsFrame=System.Math.Abs(number(at(at(two,"position_world"),0))-firstWorldX-5)<0.001&&System.Math.Abs(number(at(at(two,"position_in_player_parent"),0))-2)<0.001;
+bool activeUnchanged=UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle==active.handle&&active.isDirty==dirty;
+if(!localCorrect||!frameCorrect||!colliderAim||!followsFrame||!activeUnchanged)throw new System.Exception("Projection fixture failed");
+return new{passed=5,local_coordinates=localCorrect,reference_frame_id=frameCorrect,collider_aim=colliderAim,moving_frame=followsFrame,active_scene_unchanged=activeUnchanged,gameplay=false};
+}finally{
+movement.SetValue(null,oldMovement);refresh.SetValue(null,oldRefresh);items.SetValue(null,oldItems);
+if(root!=null)UnityEngine.Object.DestroyImmediate(root);if(player!=null)UnityEngine.Object.DestroyImmediate(player);if(target!=null)UnityEngine.Object.DestroyImmediate(target);
+UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(preview);
+}

@@ -1,0 +1,43 @@
+const string prefix = "QaAgent.FastUi.";
+if (UnityEditor.SessionState.GetBool(prefix + "warmup", false))
+    return new { status = "compiled_only", input_sent = false };
+__ERROR_WATCH_SETUP__
+System.Func<string,UnityEngine.GameObject> find = suffix => UnityEngine.GameObject.Find("CanvasInterface/UIPause/" + suffix);
+System.Func<string,float?> slider = suffix => {
+    var go = find(suffix);
+    var s = go == null ? null : go.GetComponent<UnityEngine.UI.Slider>();
+    return s == null ? (float?)null : s.value;
+};
+System.Func<string,string> selected = name => {
+    var go = find("Panel/Elements/Settings/Contents/" + name + "/UISettingsSwitch");
+    return go == null ? null : go.GetComponentsInChildren<UnityEngine.UI.Text>(false)
+        .OrderByDescending(t => t.color.r + t.color.g + t.color.b).Select(t => t.text).FirstOrDefault();
+};
+var windows = new System.Collections.Generic.List<string>();
+string popup = "";
+foreach (var w in UnityEngine.Resources.FindObjectsOfTypeAll<Acme.Gui.Abstractions.AbstractWindowPrefab>()) {
+    if (w == null || !w.isActiveAndEnabled || !w.gameObject.scene.IsValid() || !w.gameObject.scene.isLoaded) continue;
+    windows.Add(w.GetType().FullName);
+    if (w.name == "UIPopupDefault") foreach (var t in w.GetComponentsInChildren<UnityEngine.UI.Text>(false))
+        if (!string.IsNullOrEmpty(t.text)) popup += t.text + "\n";
+}
+var scenes = new System.Collections.Generic.List<string>();
+for (int i=0;i<UnityEngine.SceneManagement.SceneManager.sceneCount;i++) {
+    var s=UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+    if (s.isLoaded) scenes.Add(s.name);
+}
+string intent = null;
+if (popup.Contains("прогресс") && popup.Contains("начать")) intent = "new_game";
+if (popup.Contains("ГЛАВНОЕ МЕНЮ") && popup.Contains("Выйти?")) intent = "exit";
+var language = find("Panel/Elements/BottomElements/LanguageSwitch/Language");
+return new {
+    status = UnityEditor.SessionState.GetString(prefix + "status", "idle"),
+    error_watch = errorWatchSnapshot(), windows = windows, scenes = scenes,
+    version = UnityEngine.Application.version, playing = UnityEditor.EditorApplication.isPlaying,
+    graphics = slider("Panel/Elements/Graphics/SliderGraphics"),
+    sensitivity = slider("Panel/Elements/Sensitivity/SliderSensivity"),
+    effects = selected("Effects"), music = selected("Music"), vibration = selected("Vibration"), fps = selected("FPS"),
+    target_fps = UnityEngine.Application.targetFrameRate,
+    language = language == null ? null : language.GetComponentInChildren<UnityEngine.UI.Text>().text,
+    popup_intent = intent
+};

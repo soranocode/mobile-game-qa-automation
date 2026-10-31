@@ -11,6 +11,7 @@ __pycache__/
 # Local evidence, scratch files, device/account state, and builds
 work/
 runs/
+brain-store/
 artifacts/
 captures/
 screenshots/
@@ -29,6 +30,8 @@ account-config.local.*
 *.keystore
 
 # Secrets
+qa.local.json
+.codex/config.local.toml
 .env
 .env.*
 !.env.example
@@ -44,3 +47,6 @@ secrets/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Historical export superseded by the current Unity report
+output/pdf/ocean-nomad-ai-qa-pilot-2026-10-26.pdf

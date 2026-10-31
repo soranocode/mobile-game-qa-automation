@@ -1,0 +1,85 @@
+{
+  "id": "ON-QUEST-START-001",
+  "kind": "skill",
+  "title": "Вызвать выбранный квест через чит-панель и вернуться в игру",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0 dev",
+  "runtime": "UnityEditor 6000.0.66f2",
+  "status": "hook_use launch human-approved23.10; other UIDs retain earlier scope",
+  "observed_at": "2026-10-23",
+  "source": "Указания и демонстрация человека Quests; read-only структура текущей панели; точечное чтение исходников",
+  "verification_method": "Сопоставление кликов с раскладкой IMGUI и кэшированными подписями текущего runtime. Названия IMGUI исходный журнал не записывал.",
+  "agent_replay": "Выполнен первый прогон с подсказками человека. Фактические request+started для intro/hands_collect подтверждены; control повторно стал активным. Не считать гладким автономным PASS или принятым быстрым навыком.",
+  "parameters": {
+    "quest_uid": "Точное название/UID строки Quests, а не сохранённый номер строки или точка"
+  },
+  "preconditions": [
+    "Dev/TestGUI доступна",
+    "Один исполнитель владеет вводом Unity",
+    "Запрошен вызов конкретного квеста",
+    "Свежий интерфейс и отсутствие новой неожиданной красной ошибки"
+  ],
+  "route": [
+    "Открыть TestGUI по ON-UI-DEVTOOLS-001 либо использовать уже открытую панель",
+    "Выбрать раздел с точной подписью Quests",
+    "Найти строку по quest_uid в актуальном списке и странице; вычислить текущую геометрию элемента",
+    "Нажать строку обычным UI-вводом, не вызывать внутренний Start-сигнал напрямую",
+    "Нажать << Назад: из Quests в корень, затем из корня закрыть панель. Если уже в корне, достаточно одного раза; после закрытия лишних кликов нет",
+    "Подтвердить закрытие TestGUI и появление ожидаемого квеста, вступления или диалога. Доступность игрового HUD сама по себе не подтверждает нужный квест"
+  ],
+  "expected_effects": [
+    "Выбран запрошенный UID",
+    "Чит-панель закрыта",
+    "Наблюдается ожидаемое начальное состояние выбранного квеста"
+  ],
+  "stop_conditions": [
+    "Неизвестный/отсутствующий UID",
+    "Неизвестное состояние панели",
+    "Новая неожиданная красная ошибка",
+    "Неопределённый результат отправки ввода; не повторять выбор вслепую",
+    "После двух подтверждённых Назад панель остаётся открыта"
+  ],
+  "known_demonstrated_uids": [
+    "intro",
+    "control",
+    "hands_collect",
+    "hook_use",
+    "wooden_hook"
+  ],
+  "important_distinction": "Quests запускает квест. CompleteQuests — отдельный раздел принудительного завершения; не подменять им прохождение.",
+  "input": "IMGUI geometry from live TestGUI settings; hidden TestGUI bounds use render-target pixels, then current Quests row. Focus+MouseMove, later game frame Down, later frame Up. Direct UGUI raycast does not describe IMGUI. Normal wrapper waits terminal status before any next gesture.",
+  "launch_verification": "Перед закрытием панели подтвердить запрос точного UID и фактический started/новое состояние квеста. В первом прогоне sent несколько раз не сопровождался выбором: человек поправил не просто закрывать панель.",
+  "performance": "hook_use full routes23.597/21.636s including quest launch and collection, human-approved; launch-only speed and other quest UIDs not generalized.",
+  "related_ids": [
+    "ON-UI-DEVTOOLS-001",
+    "ON-UI-ERRORWATCH-001",
+    "ON-QUEST-ONBOARD-001"
+  ],
+  "evidence_refs": [
+    "raft-qa-demonstrations/20261022T131645Z-5d6ab3d8/",
+    "unity-mcp/quest-learning/20261022T131645Z-5d6ab3d8/reconstruction.json",
+    "raft-qa-demonstrations/20261023T104034Z-f2319e70/analysis/semantic-evidence.json"
+  ],
+  "source_refs": [
+    "Assets/Scripts/TestBuild/TestGUIs/Panel/ItemPanelQuest.cs",
+    "Assets/Scripts/TestBuild/TestGUIs/PanelElements/AbstractItemPanel.cs",
+    "Assets/Scripts/TestBuild/TestGUIs/TestGUI.cs",
+    "Assets/Scripts/TestBuild/TestGUIs/Panel/HeaderPanel.cs"
+  ],
+  "cheat_panel_pacing": {
+    "minimum_between_actions_ms": 1000,
+    "source": "Указание человека23.10 после пропущенных быстрых действий",
+    "rule": "Секундная пауза между действиями и проверка фактического open/panel/квеста. ACK down_queued/sent не доказывает срабатывания; если состояние не сменилось, сначала наблюдение, без повторного запуска вслепую."
+  },
+  "scene_transition_precondition": "После Начать новую игру дождаться завершения перезагрузки и актуального игрового HUD; не запускать Quests в выгружающейся сцене.",
+  "executor_limit": "Локальный прототип IMGUI имел allowlist intro/control/hands_collect. Новые UID изучены по человеческой записи; совместимость исполнителя расширить явно при следующем запросе теста, не считать уже проверенным универсальным навыком.",
+  "approved_hook_use": {
+    "date": "2026-10-23",
+    "skill_id": "ON-SPATIAL-HOOK-COLLECT-001",
+    "evidence": "unity-mcp/hook-approved/2026-10-23-hook-frame-approved/report.json",
+    "frame_order": "Focus+Move → later Time.frameCount → Down → later frame → Up → terminal status; then1s",
+    "no_overlap": "Use questUi wrapper which waits terminal status up to2.5s before next action. Do not reuse old wall-clock120ms helper.",
+    "close": "Wait for actual Quests→None→closed; missed click is not successful Back. Read current state and retry boundedly.",
+    "verification": "Fresh Started before closing, fresh Done3/3 after gameplay; actual full trials had5successful UI transitions with no repeated click."
+  }
+}

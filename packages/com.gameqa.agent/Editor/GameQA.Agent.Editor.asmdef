@@ -1,0 +1,7 @@
+{
+  "name": "GameQA.Agent.Editor",
+  "rootNamespace": "GameQA.Agent",
+  "references": ["UnityEngine.UI"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

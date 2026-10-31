@@ -1,0 +1,62 @@
+
+System.Func<object> errorWatchSnapshot = () => {
+    var watch = System.AppDomain.CurrentDomain.GetData("QaAgent.ErrorWatch.v1") as System.Collections.Generic.Dictionary<string,object>;
+    if (watch == null) return new { available = false };
+    lock (watch["gate"]) return (object)new {
+        available = true, epoch = (string)watch["epoch"], armed = (bool)watch["armed"],
+        new_errors = (long)watch["total"] - (long)watch["baseline_total"],
+        unexpected_new_errors = (long)watch["unexpected"] - (long)watch["baseline_unexpected"],
+        blocked = (bool)watch["armed"] && (long)watch["unexpected"] > (long)watch["baseline_unexpected"]
+    };
+};
+System.Func<bool> errorWatchBlocked = () => {
+    var watch = System.AppDomain.CurrentDomain.GetData("QaAgent.ErrorWatch.v1") as System.Collections.Generic.Dictionary<string,object>;
+    if (watch == null) return true;
+    lock (watch["gate"]) return !(bool)watch["armed"] ||
+        (long)watch["unexpected"] > (long)watch["baseline_unexpected"];
+};
+
+if(errorWatchBlocked())return new {status="blocked_new_error",error_watch=errorWatchSnapshot()};
+const string p="QaAgent.QuestUi.";
+var lines=System.IO.File.ReadAllLines(UnityEditor.SessionState.GetString(p+"params",""));
+var role="observe";var wanted=lines.Length>1?lines[1]:"";
+var f=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic;
+var go=UnityEngine.GameObject.Find("TestGUI(Clone)"); if(go==null)return new {status="missing_testgui",error_watch=errorWatchSnapshot()};
+var c=go.GetComponents<UnityEngine.MonoBehaviour>().First(v=>v.GetType().Name=="TestGUI");
+var open=(bool)c.GetType().GetField("_isTest",f).GetValue(c);var panel=c.GetType().GetField("_currentState",f).GetValue(c).ToString();
+var settings=c.GetType().GetField("_settings",f).GetValue(c);var st=settings.GetType();
+var width=(int)st.GetProperty("Width").GetValue(settings,null);var height=(int)st.GetProperty("Height").GetValue(settings,null);var sy=(int)st.GetProperty("StartY").GetValue(settings,null);
+var cpw=(int)st.GetProperty("CameraPixelWidth").GetValue(settings,null);var cph=(int)st.GetProperty("CameraPixelHeight").GetValue(settings,null);var questPages=((System.Collections.IEnumerable)c.GetType().GetField("_activePanelList",f).GetValue(c)).Cast<object>().FirstOrDefault(v=>v.GetType().Name=="ItemPanelQuest");var qt=questPages==null?null:questPages.GetType().BaseType;var rawKeys=qt==null?null:qt.GetField("_keys",f).GetValue(questPages) as System.Collections.IEnumerable;var liveKeys=rawKeys==null?new string[0]:rawKeys.Cast<string>().ToArray();var livePage=qt==null?0:(int)qt.GetField("_currentPage",f).GetValue(questPages);var liveCount=qt==null?0:(int)qt.GetField("_pageCount",f).GetValue(questPages);var perPage=(cpw/width)*((cph-sy)/height);var wantedIndex=System.Array.IndexOf(liveKeys,"canned_eat");if(role=="observe")return new {status=UnityEditor.SessionState.GetString(p+"status","idle"),open=open,panel=panel,page=livePage,page_count=liveCount,target_page=wantedIndex<0?-1:wantedIndex/perPage,target_uid=wantedIndex<0?null:liveKeys[wantedIndex],visible_labels=panel=="Quests"?liveKeys.Skip(livePage*perPage).Take(perPage).ToArray():new string[0],camera_width=cpw,camera_height=cph,width=width,height=height,start_y=sy,error_watch=errorWatchSnapshot()};
+if(!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)||!UnityEditor.EditorApplication.isPlaying)return new {status="not_active"};
+UnityEngine.Rect rect=default(UnityEngine.Rect);string label="";
+if(role=="open"&&!open){rect=new UnityEngine.Rect(0,0,90,90);label="TestGUI";}
+else if(role=="back"&&open){rect=new UnityEngine.Rect(0,0,width,height);label="<< Назад";}
+else if(role=="shark"&&open&&panel=="GamePlay"){var sx=(int)st.GetProperty("StartX").GetValue(settings,null);rect=new UnityEngine.Rect(sx,sy+2*height,width,height);label="Shark Raft Attack";}
+else if(role=="menu"&&open&&panel=="None"){
+ var ps=((System.Collections.IEnumerable)c.GetType().GetField("_activePanelList",f).GetValue(c)).Cast<object>().ToArray();
+ var labels=ps.Select(v=>v.GetType().GetProperty("State").GetValue(v,null).ToString()).ToArray();var idx=System.Array.IndexOf(labels,wanted);
+ var rows=(cph-sy)/height;var cols=cpw/width;var page=(int)c.GetType().GetField("_currentPage",f).GetValue(c);
+ if(idx<0||idx/(rows*cols)!=page)return new {status="target_not_on_page"};idx-=page*rows*cols;rect=new UnityEngine.Rect((idx/rows)*width,sy+(idx%rows)*height,width,height);label=labels[System.Array.IndexOf(labels,wanted)];
+}
+else if((role=="page_next"||role=="page_prev")&&open&&panel=="Quests"){if((role=="page_next"&&livePage>=liveCount-1)||(role=="page_prev"&&livePage<=0))return new{status="page_boundary"};rect=new UnityEngine.Rect(cpw-(role=="page_next"?1:3)*width,0,width,height);label=role=="page_next"?"=>":"<=";}
+else if(role=="quest"&&open&&panel=="Quests"&&new[]{"canned_eat"}.Contains(wanted)){
+ var ps=((System.Collections.IEnumerable)c.GetType().GetField("_activePanelList",f).GetValue(c)).Cast<object>();var q=ps.First(v=>v.GetType().Name=="ItemPanelQuest");var bt=q.GetType().BaseType;
+ var keys=((System.Collections.IEnumerable)bt.GetField("_keys",f).GetValue(q)).Cast<string>().ToArray();var idx=System.Array.IndexOf(keys,wanted);var rows=(cph-sy)/height;var cols=cpw/width;var page=(int)bt.GetField("_currentPage",f).GetValue(q);
+ if(idx<0||idx/(rows*cols)!=page)return new {status="target_not_on_page"};idx-=page*rows*cols;rect=new UnityEngine.Rect((idx/rows)*width,sy+(idx%rows)*height,width,height);label=wanted;
+}else return new {status="unexpected_state",open=open,panel=panel};
+var w=UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().Single(v=>v.GetType().Name=="GameView");var wf=w.GetType();var view=(UnityEngine.Rect)wf.GetProperty("viewInWindow",f).GetValue(w,null);var image=(UnityEngine.Rect)wf.GetProperty("targetInView",f).GetValue(w,null);
+var point=rect.center;
+w.Focus();w.Repaint();
+int focusFrame=UnityEngine.Time.frameCount,downFrame=-1,upFrame=-1,phase=0;double began=UnityEditor.EditorApplication.timeSinceStartup;
+UnityEditor.SessionState.SetString(p+"status","click_pending");
+UnityEditor.EditorGUIUtility.QueueGameViewInputEvent(new UnityEngine.Event{type=UnityEngine.EventType.MouseMove,mousePosition=point});
+UnityEditor.EditorApplication.CallbackFunction tick=null;System.Action<string> end=status=>{UnityEditor.EditorApplication.update-=tick;UnityEditor.SessionState.SetString(p+"status",status);UnityEditor.SessionState.SetString(p+"frames",focusFrame+","+downFrame+","+upFrame);};
+tick=()=>{
+ if(!UnityEditor.EditorApplication.isPlaying||!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)||errorWatchBlocked()||UnityEditor.EditorApplication.timeSinceStartup-began>2.0){if(downFrame>=0&&upFrame<0){UnityEditor.EditorGUIUtility.QueueGameViewInputEvent(new UnityEngine.Event{type=UnityEngine.EventType.MouseUp,mousePosition=point,button=0});upFrame=UnityEngine.Time.frameCount;}end("click_cancelled");return;}
+ if(UnityEditor.EditorWindow.focusedWindow!=w){w.Focus();w.Repaint();UnityEditor.EditorApplication.QueuePlayerLoopUpdate();return;}
+ if(phase==0&&UnityEngine.Time.frameCount>focusFrame){UnityEditor.EditorGUIUtility.QueueGameViewInputEvent(new UnityEngine.Event{type=UnityEngine.EventType.MouseDown,mousePosition=point,button=0,clickCount=1});downFrame=UnityEngine.Time.frameCount;phase=1;}
+ else if(phase==1&&UnityEngine.Time.frameCount>downFrame){UnityEditor.EditorGUIUtility.QueueGameViewInputEvent(new UnityEngine.Event{type=UnityEngine.EventType.MouseUp,mousePosition=point,button=0,clickCount=1});upFrame=UnityEngine.Time.frameCount;phase=2;}
+ else if(phase==2&&UnityEngine.Time.frameCount>upFrame){end("sent");return;}
+ w.Repaint();UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+};UnityEditor.EditorApplication.update+=tick;UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+return new {status="click_queued",role=role,label=label,point=point.ToString(),error_watch=errorWatchSnapshot()};

@@ -1,0 +1,190 @@
+// Passive execute_code C#6 body. Replace __MODE__ with prepare/read/stop.
+// No Resolve, service creation, input, force-attack, health writes or game-method invocation.
+const string key = "QaAgent.SharkObserver.v1";
+var mode = "__MODE__";
+__ERROR_WATCH_SETUP__
+var saved = System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if (mode == "stop") {
+    if (saved != null && saved.ContainsKey("cleanup")) ((System.Action)saved["cleanup"])();
+    System.AppDomain.CurrentDomain.SetData(key, null);
+    return new { status = "stopped", input_sent = false };
+}
+if (mode == "read") {
+    if (saved == null) return new { status = "not_prepared", source_status = "prepare_missing_or_domain_reloaded", input_sent = false };
+    var savedRead = saved.ContainsKey("read") ? saved["read"] as System.Func<object> : null;
+    if (savedRead == null) return new { status = "not_prepared", source_status = "observer_state_incompatible", input_sent = false };
+    return savedRead();
+}
+if (mode != "prepare") return new { status = "invalid_mode" };
+if (saved != null && saved.ContainsKey("cleanup")) ((System.Action)saved["cleanup"])();
+System.AppDomain.CurrentDomain.SetData(key, null);
+// Persist failed preparation too: a following read must retain its actual cause.
+System.Func<string,object,object> unavailable = (reason,detail) => {
+    var result = new { status = reason, source_status = reason, detail = detail, input_sent = false };
+    System.AppDomain.CurrentDomain.SetData(key, new System.Collections.Generic.Dictionary<string,object> {
+        {"read", (System.Func<object>)(() => result)}, {"cleanup", (System.Action)(() => {})}
+    });
+    return result;
+};
+if (!UnityEditor.EditorApplication.isPlaying) return unavailable("not_playing", null);
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+System.Func<object,string,object> field = (obj,name) => {
+    if (obj == null) return null;
+    var type = obj.GetType();
+    while (type != null) {
+        var f = type.GetField(name, flags | System.Reflection.BindingFlags.DeclaredOnly);
+        if (f != null) return f.GetValue(obj);
+        type = type.BaseType;
+    }
+    return null;
+};
+var tests = UnityEngine.Resources.FindObjectsOfTypeAll<TestGUI>().Where(t => t != null && t.isActiveAndEnabled && t.gameObject.scene.IsValid()).ToArray();
+if (tests.Length != 1) return unavailable("ambiguous_testgui", new { count = tests.Length });
+var panelSource = field(tests[0], "_activePanelList") as System.Collections.IEnumerable;
+if (panelSource == null) return unavailable("panel_binding_unknown", null);
+var panels = panelSource.Cast<object>().ToArray();
+var gamePlayPanels = panels.Where(p => p != null && p.GetType().Name == "GamePlay").ToArray();
+if (gamePlayPanels.Length != 1) return unavailable("gameplay_panel_binding_unknown", new { count = gamePlayPanels.Length });
+var gp = gamePlayPanels[0];
+var trigger = field(gp, "_brutalSharkStartAttack");
+if (trigger == null) return unavailable("shark_trigger_binding_unknown", null);
+var shark = field(trigger, "_enemyManager") as Enemy.BrutalShark.SharkAISystem;
+if (shark == null) return unavailable("bound_shark_unavailable", new { note = "Existing trigger has no live bound shark; re-prepare after fresh scene/spawn is ready." });
+if (!shark.gameObject.scene.IsValid() || !shark.gameObject.scene.isLoaded || !shark.gameObject.activeInHierarchy)
+    return unavailable("bound_shark_inactive_or_unloaded", new { id = shark.GetInstanceID() });
+var movements = UnityEngine.Resources.FindObjectsOfTypeAll<Survival.Views.Movement>().Where(m => m != null && m.isActiveAndEnabled && m.gameObject.scene.IsValid() && m.gameObject.scene.isLoaded).ToArray();
+if (movements.Length != 1) return unavailable("player_source_ambiguous", new { count = movements.Length });
+var movement = movements[0];
+var huds = UnityEngine.Resources.FindObjectsOfTypeAll<Survival.Views.UIView.UIHudControlsPanel>().Where(h => h != null && h.isActiveAndEnabled && h.gameObject.scene.IsValid() && h.gameObject.scene.isLoaded).ToArray();
+if (huds.Length != 1) return unavailable("hud_source_ambiguous", new { count = huds.Length });
+var hud = huds[0];
+if (hud.ActionButtons == null || hud.ActionButtons.Length < 1 || hud.ActionButtons[0] == null) return unavailable("hud_action_button_unavailable", null);
+var callback = field(hud.ActionButtons[0], "_pressExtended") as System.Delegate;
+var owner = callback == null ? null : callback.Target;
+var activity = field(owner, "_activityController") as Survival.Activities.ActivityController;
+if (activity == null) return unavailable("activity_binding_unknown", null);
+var events = new System.Collections.Generic.List<object>();
+var subscriptions = new System.Collections.Generic.List<System.IDisposable>();
+var began = UnityEditor.EditorApplication.timeSinceStartup;
+var initialHp = shark.Health.Value;
+var scene = movement.gameObject.scene.handle;
+bool disposed = false;
+var stoppedReason = "explicit_stop_or_reprepare";
+System.Action<string,object> record = (kind,data) => {
+    if (disposed) return;
+    events.Add(new { kind = kind, frame = UnityEngine.Time.frameCount, seconds = UnityEditor.EditorApplication.timeSinceStartup - began, data = data });
+    if (events.Count > 48) events.RemoveAt(0);
+};
+System.Action<bool> onAttack = active => record("attack_signal", new { active = active });
+System.Action<string,double> onStatistic = (uid,value) => {
+    if (uid == "enemy.shark.AttackRaft.retreat" || uid == "enemy.shark.AttackRaft.timeout")
+        record(uid.EndsWith("retreat") ? "retreat" : "timeout", new { uid = uid, value = value });
+};
+UnityEngine.Events.UnityAction<float> onDamage = amount => record("damage", new { amount = amount, hp = shark == null ? (float?)null : shark.Health.Value });
+UnityEngine.Events.UnityAction onDeath = () => record("death", null);
+if (shark._sharkAttacked != null) subscriptions.Add(shark._sharkAttacked.Listen(onAttack));
+if (shark._statisticsAdd != null) subscriptions.Add(shark._statisticsAdd.Listen(onStatistic));
+shark.DamageEventProp.AddListener(onDamage);
+shark.DeathEventProp.AddListener(onDeath);
+System.Func<UnityEngine.Vector3,object> xyz = v => new { x = v.x, y = v.y, z = v.z };
+System.Func<object> read = () => {
+    if (disposed) return new { status = "stopped", source_status = stoppedReason, events = events.ToArray(), input_sent = false };
+    if (!UnityEditor.EditorApplication.isPlaying)
+        return new { status = "source_changed", source_status = "play_ended", events = events.ToArray(), input_sent = false };
+    if (shark == null || movement == null || hud == null || tests[0] == null)
+        return new { status = "source_changed", source_status = "bound_object_destroyed", events = events.ToArray(), input_sent = false };
+    if (!movement.gameObject.scene.isLoaded || movement.gameObject.scene.handle != scene)
+        return new { status = "source_changed", source_status = "player_scene_changed", events = events.ToArray(), input_sent = false };
+    if (!shark.gameObject.scene.IsValid() || !shark.gameObject.scene.isLoaded || !shark.gameObject.activeInHierarchy)
+        return new { status = "source_changed", source_status = "bound_shark_inactive_or_unloaded", events = events.ToArray(), input_sent = false };
+    var currentBound = field(trigger, "_enemyManager") as Enemy.BrutalShark.SharkAISystem;
+    if (currentBound != shark) return new { status = "bound_shark_changed", source_status = "shark_respawned_reprepare_required", events = events.ToArray(), input_sent = false };
+    var currentCallback = hud.ActionButtons == null || hud.ActionButtons.Length == 0 || hud.ActionButtons[0] == null ? null : field(hud.ActionButtons[0], "_pressExtended") as System.Delegate;
+    if (currentCallback == null || !object.ReferenceEquals(currentCallback.Target, owner))
+        return new { status = "source_changed", source_status = "hud_activity_rebound_reprepare_required", events = events.ToArray(), input_sent = false };
+    var attack = shark.GetComponent<Enemy.BrutalShark.ExecutorRealisations.BrutalSharkAttackRaft>();
+    var gnaw = shark.GetComponent<Enemy.BrutalShark.ExecutorRealisations.BrutalSharkGnawRaftExecutor>();
+    // DamageRecipient is exposed only at priority300; backing field preserves the approach target.
+    var recipient = field(attack, "_damageRecipient") as Survival.Ai.Components.Behaviour.DamageRecipients.RaftDamageRecipient;
+    var building = recipient == null ? null : recipient.Building;
+    var buildingObject = building == null ? null : building.Object;
+    var hit = shark.HitPointTransform == null ? shark.transform.position : shark.HitPointTransform.position;
+    var activeColliders = (shark.Colliders ?? System.Linq.Enumerable.Empty<UnityEngine.Collider>()).Where(c => c != null && c.enabled && c.gameObject.activeInHierarchy).ToArray();
+    var colliders = activeColliders.Select(c => new { id = c.GetInstanceID(), game_object_id = c.gameObject.GetInstanceID(), center = xyz(c.bounds.center), closest_to_player = xyz(c.ClosestPoint(movement.Position)), size = xyz(c.bounds.size) }).ToArray();
+    var primary = activity.CurrentActivity;
+    var heldProp = activity.GetType().GetProperty("HeldItem", flags);
+    var held = heldProp == null ? null : heldProp.GetValue(activity, null);
+    var rangeObject = field(primary, "_range");
+    var range = rangeObject is float ? (float?)rangeObject : null;
+    var weaponDatabase = field(primary, "_weaponModelDatabase") as Survival.Databases.IDatabase<Survival.Weapon.Models.WeaponModel>;
+    Survival.Weapon.Models.WeaponModel weaponModel = null;
+    if (weaponDatabase != null && held is string && !string.IsNullOrEmpty((string)held)) weaponDatabase.TryGet((string)held, out weaponModel);
+    var hitBuffer = new UnityEngine.RaycastHit[5];
+    var liveRange = weaponModel == null ? (range ?? 0) : weaponModel.Range;
+    var mainCamera = UnityEngine.Camera.main;
+    var probeAvailable = mainCamera != null && liveRange > 0 && !float.IsNaN(liveRange) && !float.IsInfinity(liveRange);
+    var probeStatus = mainCamera == null ? "unavailable_camera_main" : probeAvailable ? "sampled" : "unavailable_attack_range";
+    var hitCount = 0;
+    UnityEngine.Collider meleeCollider = null;
+    if (probeAvailable) {
+        var centerRay = mainCamera.ScreenPointToRay(new UnityEngine.Vector3(UnityEngine.Screen.width * .5f, UnityEngine.Screen.height * .5f, 0));
+        hitCount = UnityEngine.Physics.SphereCastNonAlloc(centerRay, .33f, hitBuffer, liveRange);
+        for (int hi = 0; hi < hitCount; hi++)
+            if (hitBuffer[hi].collider != null && hitBuffer[hi].collider.gameObject.layer == UnityEngine.LayerMask.NameToLayer("Enemy")) { meleeCollider = hitBuffer[hi].collider; break; }
+    }
+    var startedProp = shark.GetType().GetProperty("HealthWhenStartedRaftAttack", flags);
+    var healthStart = startedProp == null ? (float?)null : (float)startedProp.GetValue(shark, null);
+    return new {
+        status = "observed", source_status = "bound_live", error_watch = errorWatchSnapshot(),
+        player_position = Survival.Windows.Panels.HudControlsManager.PlayerPosition.ToString(), arms_animate = Survival.Drawers.ArmsDrawer.IsAnimate,
+        melee_probe_status = probeStatus, melee_probe_truncated = hitCount == hitBuffer.Length,
+        melee_hit_shark = probeAvailable ? (bool?)(meleeCollider != null && meleeCollider.GetComponentInParent<Enemy.BrutalShark.SharkAISystem>() == shark) : null,
+        melee_hit_id = meleeCollider == null ? (int?)null : meleeCollider.GetInstanceID(), frame = UnityEngine.Time.frameCount,
+        seconds = UnityEditor.EditorApplication.timeSinceStartup - began,
+        attack_active = Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack,
+        shark_status = shark.Status.ToString(), shark_active = shark.gameObject.activeInHierarchy,
+        shark_id = shark.GetInstanceID(), enemy_game_object_id = shark.gameObject.GetInstanceID(), enemy_uid = shark.GetUid,
+        player = xyz(movement.Position), camera = xyz(movement.CameraPosition), camera_forward = xyz(movement.CameraForward),
+        shark = xyz(shark.transform.position), hit_point = xyz(hit), colliders = colliders,
+        distance_player_to_hit = UnityEngine.Vector3.Distance(movement.Position,hit),
+        distance_camera_to_hit = UnityEngine.Vector3.Distance(movement.CameraPosition,hit),
+        hp = shark.Health.Value, max_hp = shark.MaxHealth.Value, initial_hp = initialHp,
+        health_when_started = healthStart, stop_damage_threshold = shark.MaxHealth.Value * shark.HpToStopAttackingRaft,
+        hp_to_stop_fraction = shark.HpToStopAttackingRaft,
+        attack_time_seconds = gnaw == null ? (double?)null : gnaw.AttackTime / (double)System.TimeSpan.TicksPerSecond,
+        force_destroy = gnaw == null ? (bool?)null : gnaw.ForceDestroy,
+        gnawing = attack == null ? (bool?)null : attack.IsGnawing,
+        attack_end = attack == null ? (bool?)null : attack.IsEndAttack,
+        target_building_id = buildingObject == null ? (int?)null : buildingObject.GetInstanceID(),
+        target_building_alive = buildingObject != null && buildingObject.activeInHierarchy,
+        target_building_position = buildingObject == null ? null : xyz(buildingObject.transform.position),
+        equipped_uid = held, primary_activity = primary == null ? null : primary.GetType().Name,
+        equipped_attack_range_cached = range,
+        equipped_attack_range_model = weaponModel == null ? (float?)null : weaponModel.Range,
+        equipped_attack_interval_model = weaponModel == null ? (float?)null : weaponModel.TimeForAttack,
+        using_now = activity.IsUsing,
+        events = events.ToArray(), source = "existing_GamePlay_trigger_and_HUD_binding", input_sent = false
+    };
+};
+UnityEditor.EditorApplication.CallbackFunction watchdog = null;
+System.Action cleanup = () => {
+    if (disposed) return;
+    disposed = true;
+    foreach (var sub in subscriptions) if (sub != null) sub.Dispose();
+    if (shark != null) {
+        shark.DamageEventProp.RemoveListener(onDamage);
+        shark.DeathEventProp.RemoveListener(onDeath);
+    }
+    if (watchdog != null) UnityEditor.EditorApplication.update -= watchdog;
+};
+watchdog = () => {
+    if (!UnityEditor.EditorApplication.isPlaying) stoppedReason = "play_ended";
+    else if (shark == null || movement == null || hud == null || tests[0] == null) stoppedReason = "bound_object_destroyed";
+    else if (!movement.gameObject.scene.isLoaded || movement.gameObject.scene.handle != scene) stoppedReason = "player_scene_changed";
+    else if (UnityEditor.EditorApplication.timeSinceStartup - began > 300) stoppedReason = "observer_expired_300_seconds";
+    else return;
+    cleanup();
+};
+UnityEditor.EditorApplication.update += watchdog;
+System.AppDomain.CurrentDomain.SetData(key, new System.Collections.Generic.Dictionary<string,object> { {"cleanup", cleanup}, {"read", read} });
+return read();

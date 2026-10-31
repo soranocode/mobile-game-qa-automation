@@ -1,0 +1,11 @@
+---
+description: Document new game knowledge and retrieve only relevant topic cards
+alwaysApply: true
+---
+
+- Human instruction23.10.2026: document acquired game knowledge and maintain the structured brain throughout work.
+- Follow brain/KNOWLEDGE_WORKFLOW.md; start with projects/ocean-nomad/knowledge/index.json or tools/knowledge/lookup.py.
+- Keep general facts in one owning topic card; missions and skills link to it. Maintain evidence/status/aliases and contradictions instead of duplicating full facts per scenario.
+- Separate human requirements, source inspection, runtime evidence and hypotheses. A described skill may have no executor yet.
+- Search metadata first; explicitly read selected cards. Do not reload all knowledge/history per input or frame.
+- Documentation does not authorize gameplay, fixture resets or publication. One Unity input owner remains required.

@@ -1,0 +1,970 @@
+{
+  "schema": "ocean-knowledge-index/1",
+  "game_id": "ocean-nomad",
+  "updated_at": "2026-10-29",
+  "scope": "Unity Editor, Ocean Nomad2.11.0dev; проверить совместимость перед исполнением",
+  "retrieval": "Поиск только метаданных; явное чтение карточки по ID. Связи не загружаются автоматически. Raw evidence локально и может отсутствовать на другом ПК.",
+  "routes": {
+    "hands_collect": {
+      "first": [
+        "ON-QUEST-HANDS-COLLECT-001"
+      ],
+      "if_needed": [
+        "ON-OBS-QUEST-WORLD-001",
+        "ON-LIMIT-QUEST-OBJECT-STATE-001",
+        "ON-OBJ-TUTORIAL-RESOURCES-001",
+        "ON-MECH-PICKUP-001",
+        "ON-WORLD-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-GAME-NEW-SURVIVAL-001",
+        "ON-MECH-GUIDED-CAMERA-001"
+      ]
+    },
+    "settings": {
+      "first": [
+        "ON-UI-SETTINGS-001"
+      ],
+      "if_needed": [
+        "ON-UI-SKILLS-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "quest_start": {
+      "first": [
+        "ON-QUEST-START-001"
+      ],
+      "if_needed": [
+        "ON-UI-DEVTOOLS-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "hook_use": {
+      "first": [
+        "ON-QUEST-HOOK-USE-001"
+      ],
+      "if_needed": [
+        "ON-QUEST-WOODEN-HOOK-001",
+        "ON-MECH-HOOK-001",
+        "ON-QUEST-START-001",
+        "ON-OBS-QUEST-WORLD-001"
+      ]
+    },
+    "wooden_hook": {
+      "first": [
+        "ON-QUEST-WOODEN-HOOK-001"
+      ],
+      "if_needed": [
+        "ON-QUEST-HOOK-USE-001",
+        "ON-MECH-HOOK-001",
+        "ON-QUEST-START-001"
+      ]
+    },
+    "shark_attack": {
+      "first": [
+        "ON-QUEST-SHARK-ATTACK-001"
+      ],
+      "if_needed": [
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "raft_navigation": {
+      "first": [
+        "ON-NAV-RAFT-001"
+      ],
+      "if_needed": [
+        "ON-WORLD-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "firearm": {
+      "first": [
+        "ON-COMBAT-FIREARM-SHOT-001"
+      ],
+      "if_needed": [
+        "ON-ENEMY-SHARK-001",
+        "ON-CONTROL-MOVE-LOOK-001"
+      ]
+    },
+    "shark_defense": {
+      "first": [
+        "ON-SAFETY-SHARK-DEFENSE-001"
+      ],
+      "if_needed": [
+        "ON-COMBAT-SHARK-MELEE-001",
+        "ON-ENEMY-SHARK-001",
+        "ON-NAV-RAFT-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "intro": {
+      "first": [
+        "ON-QUEST-INTRO-001"
+      ],
+      "if_needed": [
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "control": {
+      "first": [
+        "ON-QUEST-CONTROL-001"
+      ],
+      "if_needed": [
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "inventory": {
+      "first": [
+        "ON-UI-INVENTORY-001"
+      ],
+      "if_needed": [
+        "ON-UI-SKILLS-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    "canned_eat": {
+      "first": [
+        "ON-QUEST-CANNED-EAT-001"
+      ],
+      "if_needed": [
+        "ON-UI-INVENTORY-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    }
+  },
+  "records": [
+    {
+      "id": "ON-QUEST-HANDS-COLLECT-001",
+      "path": "missions/ON-QUEST-HANDS-COLLECT-001.md",
+      "title": "hands_collect: найти, подойти и собрать два учебных ресурса",
+      "kind": "mission",
+      "status": "provisional; человеческий сбор подтверждён человеком23.10, агентный не проверен",
+      "aliases": [
+        "hands_collect",
+        "соберите ресурсы",
+        "сбор двух ресурсов"
+      ],
+      "tags": [
+        "пространство",
+        "миссия",
+        "навигация"
+      ],
+      "related_ids": [
+        "ON-OBJ-TUTORIAL-RESOURCES-001",
+        "ON-MECH-PICKUP-001",
+        "ON-WORLD-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-LIMIT-QUEST-OBJECT-STATE-001",
+        "ON-GAME-NEW-SURVIVAL-001",
+        "ON-MECH-GUIDED-CAMERA-001",
+        "ON-OBS-QUEST-WORLD-001"
+      ]
+    },
+    {
+      "id": "ON-OBJ-TUTORIAL-RESOURCES-001",
+      "path": "entities/ON-OBJ-TUTORIAL-RESOURCES-001.md",
+      "title": "Учебное бревно и мусор: тип и экземпляр",
+      "kind": "entity",
+      "status": "provisional; source checked",
+      "aliases": [
+        "LogTutotial",
+        "TrashTutorial",
+        "бревно",
+        "мусор",
+        "учебные предметы"
+      ],
+      "tags": [
+        "ресурсы",
+        "идентичность",
+        "предметы"
+      ],
+      "related_ids": [
+        "ON-MECH-PICKUP-001",
+        "ON-LIMIT-QUEST-OBJECT-STATE-001"
+      ]
+    },
+    {
+      "id": "ON-MECH-PICKUP-001",
+      "path": "mechanics/ON-MECH-PICKUP-001.md",
+      "title": "Подбор рукой: доступность Pickup и проверка результата",
+      "kind": "mechanic",
+      "status": "provisional; source checked, человеческий пример подтверждён, агентный сбор не проверен",
+      "aliases": [
+        "подбор",
+        "Pickup",
+        "Controll.Action.Pickup",
+        "поднять предмет"
+      ],
+      "tags": [
+        "взаимодействие",
+        "наведение",
+        "инвентарь"
+      ],
+      "related_ids": [
+        "ON-OBJ-TUTORIAL-RESOURCES-001",
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-GAME-NEW-SURVIVAL-001"
+      ]
+    },
+    {
+      "id": "ON-WORLD-RAFT-001",
+      "path": "world/ON-WORLD-RAFT-001.md",
+      "title": "Пространство вокруг плота и позиция для взаимодействия",
+      "kind": "world",
+      "status": "provisional; навигация не реализована",
+      "aliases": [
+        "плот",
+        "вода",
+        "путь",
+        "raft_local",
+        "позиция взаимодействия"
+      ],
+      "tags": [
+        "пространство",
+        "поверхность",
+        "препятствия",
+        "навигация"
+      ],
+      "related_ids": [
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-OBS-QUEST-WORLD-001"
+      ]
+    },
+    {
+      "id": "ON-CONTROL-MOVE-LOOK-001",
+      "path": "controls/ON-CONTROL-MOVE-LOOK-001.md",
+      "title": "Движение, обзор и фокус Game View",
+      "kind": "control",
+      "status": "Hook target aiming human-approved; movement/jump provisional",
+      "aliases": [
+        "движение",
+        "камера",
+        "поворот",
+        "джойстик",
+        "Look",
+        "Space",
+        "прыжок",
+        "фокус"
+      ],
+      "tags": [
+        "управление",
+        "калибровка"
+      ],
+      "related_ids": [
+        "ON-WORLD-RAFT-001",
+        "ON-UI-ERRORWATCH-001",
+        "ON-MECH-GUIDED-CAMERA-001",
+        "ON-OBS-QUEST-WORLD-001",
+        "ON-SPATIAL-HOOK-COLLECT-001"
+      ]
+    },
+    {
+      "id": "ON-LIMIT-QUEST-OBJECT-STATE-001",
+      "path": "constraints/ON-LIMIT-QUEST-OBJECT-STATE-001.md",
+      "title": "Повтор квеста: ресурсы выключены сохранённым состоянием",
+      "kind": "constraint",
+      "status": "provisional; runtime причина подтверждена22.10",
+      "aliases": [
+        "неактивные ресурсы",
+        "ресурсы не появились",
+        "res_collected_log",
+        "res_collected_trash",
+        "QuestObject.States.Enable"
+      ],
+      "tags": [
+        "сохранение",
+        "повтор",
+        "подготовка",
+        "ресурсы"
+      ],
+      "related_ids": [
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-QUEST-START-001"
+      ]
+    },
+    {
+      "id": "ON-QUEST-START-001",
+      "path": "missions/ON-QUEST-START-001.json",
+      "title": "Вызов квеста через Quests и закрытие чит-панели",
+      "kind": "skill",
+      "status": "hook_use launch human-approved; frame-ordered IMGUI",
+      "aliases": [
+        "Quests",
+        "вызвать квест",
+        "запустить квест"
+      ],
+      "tags": [
+        "чит-панель",
+        "подготовка"
+      ],
+      "related_ids": [
+        "ON-UI-DEVTOOLS-001",
+        "ON-UI-ERRORWATCH-001",
+        "ON-SPATIAL-HOOK-COLLECT-001"
+      ]
+    },
+    {
+      "id": "ON-QUEST-ONBOARD-001",
+      "path": "missions/ON-QUEST-ONBOARD-001.json",
+      "title": "История изучения первых трёх квестов",
+      "kind": "demonstration",
+      "status": "provisional; агентная попытка2/3 и отдельная человеческая демонстрация hands_collect",
+      "aliases": [
+        "онбординг",
+        "intro",
+        "control",
+        "демонстрация квестов"
+      ],
+      "tags": [
+        "эпизод",
+        "обучение"
+      ],
+      "related_ids": [
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-QUEST-START-001"
+      ]
+    },
+    {
+      "id": "ON-UI-DEVTOOLS-001",
+      "path": "ui/ON-UI-DEVTOOLS-001.json",
+      "title": "Скрытая чит-панель TestGUI над сердечком",
+      "kind": "ui",
+      "status": "открытие и закрытие проверены; ввод уточнён",
+      "aliases": [
+        "чит-панель",
+        "TestGUI",
+        "скрытая кнопка",
+        "Назад"
+      ],
+      "tags": [
+        "dev",
+        "UI"
+      ],
+      "related_ids": [
+        "ON-QUEST-START-001"
+      ]
+    },
+    {
+      "id": "ON-UI-SETTINGS-001",
+      "path": "ui/ON-UI-SETTINGS-001.json",
+      "title": "Настройки: назначения элементов и границы проверок",
+      "kind": "ui",
+      "status": "13 UI-проверок; физические эффекты проверены не полностью",
+      "aliases": [
+        "настройки",
+        "шестерёнка",
+        "settings"
+      ],
+      "tags": [
+        "UI",
+        "проверка"
+      ],
+      "related_ids": [
+        "ON-UI-SKILLS-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    {
+      "id": "ON-UI-SKILLS-001",
+      "path": "ui/ON-UI-SKILLS-001.json",
+      "title": "Выбор и объединение одобренных навыков",
+      "kind": "policy",
+      "status": "указание человека; реестр исполнителей существует",
+      "aliases": [
+        "навыки",
+        "апрув",
+        "переключение навыков"
+      ],
+      "tags": [
+        "исполнение",
+        "обучение"
+      ],
+      "related_ids": [
+        "ON-UI-ERRORWATCH-001",
+        "ON-SPATIAL-HOOK-COLLECT-001"
+      ]
+    },
+    {
+      "id": "ON-UI-ERRORWATCH-001",
+      "path": "ui/ON-UI-ERRORWATCH-001.json",
+      "title": "Новая красная ошибка: остановка и чтение деталей",
+      "kind": "policy",
+      "status": "watcher реализован; ограничения в карточке",
+      "aliases": [
+        "ошибка",
+        "красная ошибка",
+        "errorwatch",
+        "лог"
+      ],
+      "tags": [
+        "исполнение",
+        "остановка"
+      ],
+      "related_ids": []
+    },
+    {
+      "id": "ON-UI-OVERLAYS-001",
+      "path": "ui/ON-UI-OVERLAYS-001.json",
+      "title": "Вступительные страницы и предложение Premium",
+      "kind": "ui",
+      "status": "человеком одобрено; интегрированный повтор не измерен",
+      "aliases": [
+        "Premium",
+        "премиум",
+        "продолжить",
+        "построй плот мечты"
+      ],
+      "tags": [
+        "окна",
+        "вход"
+      ],
+      "related_ids": [
+        "ON-UI-MAINMENU-001",
+        "ON-UI-ENTRY-001"
+      ]
+    },
+    {
+      "id": "ON-UI-NEWGAME-001",
+      "path": "ui/ON-UI-NEWGAME-001.json",
+      "title": "Начать игру заново через настройки",
+      "kind": "skill",
+      "status": "UI-маршрут принят; сброс игрового состояния не доказан",
+      "aliases": [
+        "новая игра",
+        "начать игру заново"
+      ],
+      "tags": [
+        "UI",
+        "подготовка"
+      ],
+      "related_ids": [
+        "ON-UI-SETTINGS-001",
+        "ON-LIMIT-QUEST-OBJECT-STATE-001"
+      ]
+    },
+    {
+      "id": "ON-UI-MAINMENU-001",
+      "path": "ui/ON-UI-MAINMENU-001.json",
+      "title": "Выход в главное меню через настройки",
+      "kind": "skill",
+      "status": "маршрут проверен; варианты в карточке",
+      "aliases": [
+        "главное меню",
+        "выйти в меню"
+      ],
+      "tags": [
+        "UI",
+        "выход"
+      ],
+      "related_ids": [
+        "ON-UI-OVERLAYS-001"
+      ]
+    },
+    {
+      "id": "ON-UI-ENTRY-001",
+      "path": "ui/ON-UI-ENTRY-001.json",
+      "title": "Вход через стартовые окна в игру",
+      "kind": "skill",
+      "status": "provisional; условия и исключения в карточке",
+      "aliases": [
+        "вход",
+        "запуск",
+        "пропуск окон"
+      ],
+      "tags": [
+        "UI",
+        "вход"
+      ],
+      "related_ids": [
+        "ON-UI-OVERLAYS-001"
+      ]
+    },
+    {
+      "id": "ON-GAME-NEW-SURVIVAL-001",
+      "path": "world/ON-GAME-NEW-SURVIVAL-001.md",
+      "title": "Новое выживание: старт без крюка и сбор руками",
+      "kind": "world",
+      "status": "provisional; правило и человеческий результат подтверждены человеком",
+      "aliases": [
+        "старт без крюка",
+        "нет крюка",
+        "начальное снаряжение",
+        "новое выживание"
+      ],
+      "tags": [
+        "старт",
+        "снаряжение",
+        "исходные условия"
+      ],
+      "related_ids": [
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-MECH-PICKUP-001",
+        "ON-LIMIT-QUEST-OBJECT-STATE-001"
+      ]
+    },
+    {
+      "id": "ON-MECH-GUIDED-CAMERA-001",
+      "path": "mechanics/ON-MECH-GUIDED-CAMERA-001.md",
+      "title": "Автоматическое наведение камеры на учебный ресурс",
+      "kind": "mechanic",
+      "status": "provisional; human + journal + source, агентный сбор не проверен",
+      "aliases": [
+        "автонаведение",
+        "камера сама",
+        "автоматический поворот",
+        "rotate_camera",
+        "CameraRotateTrigger"
+      ],
+      "tags": [
+        "камера",
+        "обучение",
+        "происхождение действия"
+      ],
+      "related_ids": [
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-MECH-PICKUP-001"
+      ]
+    },
+    {
+      "id": "ON-OBS-QUEST-WORLD-001",
+      "path": "observation/ON-OBS-QUEST-WORLD-001.md",
+      "title": "Квест, цели и координаты предметов: запись и направления взгляда",
+      "kind": "observer",
+      "status": "provisional; технические проверки и реальная запись0.2.0 Hook use разобраны23.10",
+      "aliases": [
+        "координаты предметов",
+        "цели квеста",
+        "запись квестов",
+        "угол до цели",
+        "ReadNearby",
+        "ReadSnapshot",
+        "quest_snapshot",
+        "spatial_snapshot"
+      ],
+      "tags": [
+        "наблюдение",
+        "координаты",
+        "квесты",
+        "запись"
+      ],
+      "related_ids": [
+        "ON-QUEST-HANDS-COLLECT-001",
+        "ON-WORLD-RAFT-001",
+        "ON-MECH-PICKUP-001",
+        "ON-CONTROL-MOVE-LOOK-001"
+      ]
+    },
+    {
+      "id": "ON-QUEST-HOOK-USE-001",
+      "path": "missions/ON-QUEST-HOOK-USE-001.md",
+      "title": "hook_use: выловить три учебных ресурса в любом порядке после крафта крюка",
+      "kind": "mission",
+      "status": "HUMAN_APPROVED23.10;2full trials23.597/21.636s,freshDone3/3",
+      "aliases": [
+        "hook_use",
+        "Hook_use",
+        "вылавливание",
+        "квест с хуком"
+      ],
+      "tags": [
+        "крюк",
+        "пространство",
+        "миссия"
+      ],
+      "related_ids": [
+        "ON-QUEST-WOODEN-HOOK-001",
+        "ON-MECH-HOOK-001",
+        "ON-QUEST-START-001",
+        "ON-OBS-QUEST-WORLD-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-SPATIAL-HOOK-COLLECT-001"
+      ]
+    },
+    {
+      "id": "ON-QUEST-WOODEN-HOOK-001",
+      "path": "missions/ON-QUEST-WOODEN-HOOK-001.md",
+      "title": "wooden_hook: скрафтить деревянный крюк перед вылавливанием",
+      "kind": "mission",
+      "status": "HUMAN_APPROVED_SCOPED; prepared wrapper live PASS 2026-10-27",
+      "aliases": [
+        "wooden_hook",
+        "wooden hook",
+        "WoodenHook",
+        "крафт крюка",
+        "деревянный крюк"
+      ],
+      "tags": [
+        "крафт",
+        "рецепт",
+        "миссия"
+      ],
+      "related_ids": [
+        "ON-QUEST-HOOK-USE-001",
+        "ON-MECH-HOOK-001",
+        "ON-QUEST-START-001",
+        "ON-OBS-QUEST-WORLD-001"
+      ]
+    },
+    {
+      "id": "ON-MECH-HOOK-001",
+      "path": "mechanics/ON-MECH-HOOK-001.md",
+      "title": "Крюк: наведение, одно нажатие, автоматический цикл и результат",
+      "kind": "mechanic",
+      "status": "Hook aim/click/3s/queue human-approved in hook_use Editor",
+      "aliases": [
+        "крюк",
+        "хук",
+        "Hook",
+        "бросок крюка",
+        "подтягивание"
+      ],
+      "tags": [
+        "управление",
+        "взаимодействие",
+        "сбор"
+      ],
+      "related_ids": [
+        "ON-QUEST-HOOK-USE-001",
+        "ON-QUEST-WOODEN-HOOK-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-SPATIAL-HOOK-COLLECT-001",
+        "ON-ENEMY-SHARK-001",
+        "ON-MECH-MELEE-001"
+      ]
+    },
+    {
+      "id": "ON-SPATIAL-HOOK-COLLECT-001",
+      "path": "skills/ON-SPATIAL-HOOK-COLLECT-001.json",
+      "title": "Одобренный hook_use: запуск, наведение, крюк, пауза и свежий итог",
+      "kind": "skill",
+      "status": "HUMAN_APPROVED_SCOPED23.10;2full trials",
+      "aliases": [
+        "быстро пройти hook_use",
+        "навык крюка",
+        "наведение на цель",
+        "собрать крюком",
+        "принятый прогон"
+      ],
+      "tags": [
+        "навык",
+        "крюк",
+        "одобрено",
+        "обучение"
+      ],
+      "related_ids": [
+        "ON-QUEST-HOOK-USE-001",
+        "ON-MECH-HOOK-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    {
+      "id": "ON-ENEMY-SHARK-001",
+      "path": "entities/ON-ENEMY-SHARK-001.md",
+      "title": "Акула атакует плот: сигнал, UI, цикл, вызов через GamePlay и исход",
+      "kind": "entity",
+      "status": "SOURCE_AND_LIVE_VERIFIED26.10; firearm/Hook repels human-approved",
+      "aliases": [
+        "акула",
+        "нападение акулы",
+        "shark",
+        "Shark Raft Attack",
+        "SharkAttack",
+        "Акула атакует плот"
+      ],
+      "tags": [
+        "враг",
+        "сигнал",
+        "плот",
+        "атака"
+      ],
+      "related_ids": [
+        "ON-MECH-MELEE-001",
+        "ON-WORLD-RAFT-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    {
+      "id": "ON-MECH-MELEE-001",
+      "path": "mechanics/ON-MECH-MELEE-001.md",
+      "title": "Ближний бой: крюк при нападении, дальность1.1 и camera spherecast",
+      "kind": "mechanic",
+      "status": "SOURCE_AND_HOOK_LIVE_VERIFIED26.10; spear untested",
+      "aliases": [
+        "удар",
+        "ближний бой",
+        "атака крюком",
+        "рендж",
+        "range",
+        "melee",
+        "отогнать акулу"
+      ],
+      "tags": [
+        "бой",
+        "дистанция",
+        "управление"
+      ],
+      "related_ids": [
+        "ON-ENEMY-SHARK-001",
+        "ON-MECH-HOOK-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-WORLD-RAFT-001"
+      ]
+    },
+    {
+      "id": "ON-NAV-RAFT-001",
+      "path": "world/ON-NAV-RAFT-001.md",
+      "title": "Плот с дырами: контуры, препятствия, запас и маршруты",
+      "kind": "world",
+      "status": "NON_COLLIDING_ITEMS_FILTER_LIVE_VERIFIED27.10;41.94 units/19.762s; prior continuous/full coverage retained; human speed approval pending",
+      "aliases": [
+        "границы плота",
+        "дыры",
+        "отверстия",
+        "обход препятствий",
+        "ходить по краю",
+        "карта плота",
+        "навигация",
+        "быстрая карта",
+        "плавная ходьба",
+        "непрерывный маршрут"
+      ],
+      "tags": [
+        "пространство",
+        "настил",
+        "обход",
+        "маршрут"
+      ],
+      "related_ids": [
+        "ON-WORLD-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    {
+      "id": "ON-COMBAT-FIREARM-SHOT-001",
+      "path": "skills/ON-COMBAT-FIREARM-SHOT-001.json",
+      "title": "Огнестрел: наведение и обычное использование с подтверждённым уроном",
+      "kind": "approved_game_skill",
+      "status": "HUMAN_APPROVED_SCOPED26.10; stationary/cover branch compiled and 12 decision checks passed27.10; new combat trial pending",
+      "aliases": [
+        "огнестрел",
+        "стрельба",
+        "винтовка",
+        "Rifle"
+      ],
+      "tags": [
+        "бой",
+        "оружие",
+        "одобренный навык"
+      ],
+      "related_ids": [
+        "ON-ENEMY-SHARK-001",
+        "ON-MECH-MELEE-001"
+      ]
+    },
+    {
+      "id": "ON-COMBAT-SHARK-MELEE-001",
+      "path": "skills/ON-COMBAT-SHARK-MELEE-001.json",
+      "title": "Отогнать акулу крюком: подход, range, обычные удары и retreat",
+      "kind": "approved_game_skill",
+      "status": "HUMAN_APPROVED_SCOPED26.10; Hook27damage/9.323s",
+      "aliases": [
+        "ближний бой с акулой",
+        "удары крюком",
+        "отогнать акулу",
+        "Hook melee"
+      ],
+      "tags": [
+        "бой",
+        "подход",
+        "акула",
+        "одобренный навык"
+      ],
+      "related_ids": [
+        "ON-SAFETY-SHARK-DEFENSE-001",
+        "ON-ENEMY-SHARK-001",
+        "ON-MECH-MELEE-001",
+        "ON-NAV-RAFT-001",
+        "ON-CONTROL-MOVE-LOOK-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    {
+      "id": "ON-SAFETY-SHARK-DEFENSE-001",
+      "path": "skills/ON-SAFETY-SHARK-DEFENSE-001.md",
+      "title": "Спящий обработчик акулы и смысловое возобновление задачи",
+      "kind": "execution_policy",
+      "status": "RANGED_STATIONARY_POLICY_COMPILED27.10; prior Hook/Rifle live retained; new combat/resume pending",
+      "aliases": [
+        "спящий режим",
+        "реакция на акулу",
+        "пассивная защита",
+        "SharkDefense",
+        "приоритет акулы"
+      ],
+      "tags": [
+        "сигнал",
+        "приоритет",
+        "прерывание",
+        "защита"
+      ],
+      "related_ids": [
+        "ON-COMBAT-SHARK-MELEE-001",
+        "ON-COMBAT-FIREARM-SHOT-001",
+        "ON-ENEMY-SHARK-001",
+        "ON-NAV-RAFT-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    },
+    {
+      "id": "ON-QUEST-INTRO-001",
+      "path": "missions/ON-QUEST-INTRO-001.md",
+      "title": "Сюжетные страницы intro",
+      "kind": "mission",
+      "status": "LIVE_DONE_VERIFIED29.10; repeated Finish HUMAN_ACCEPTED29.10, not a defect; on-demand registration",
+      "aliases": [
+        "intro"
+      ],
+      "tags": [
+        "prepared",
+        "quest"
+      ],
+      "related_ids": [
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "human_accepted_behavior": {
+        "date": "2026-10-29",
+        "repeated_finish_allowed": true,
+        "fresh_done_required": true
+      }
+    },
+    {
+      "id": "ON-QUEST-CONTROL-001",
+      "path": "missions/ON-QUEST-CONTROL-001.md",
+      "title": "Обучение движению и камере",
+      "kind": "mission",
+      "status": "HUMAN_APPROVED_SCOPED; prepared wrapper live PASS 2026-10-27",
+      "aliases": [
+        "control"
+      ],
+      "tags": [
+        "prepared",
+        "quest"
+      ],
+      "related_ids": [
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "last_observation": {
+        "date": "2026-10-29",
+        "scope": "cold same-quest recovery, agent verified",
+        "result": "fresh both-step Done plus actual move 0.03825 after tutorial gate released",
+        "failed_attempts_retained": true,
+        "evidence": "brain-store/portable-runtime/admissions/finish-cold-onboarding-2026-10-29/completion-summary.json",
+        "supplemental_move_assessment": "Unnecessary additional verification per direct human clarification 2026-10-29; historical action retained."
+      },
+      "human_success_criterion": {
+        "date": "2026-10-29",
+        "counted_short_movement_sufficient": true,
+        "minimum_displacement_required": false,
+        "supplemental_move_required": false,
+        "fresh_both_step_done_required": true
+      }
+    },
+    {
+      "id": "ON-QUEST-SHARK-ATTACK-001",
+      "path": "missions/ON-QUEST-SHARK-ATTACK-001.md",
+      "title": "Полная миссия shark_attack",
+      "kind": "mission",
+      "status": "PREPARED_WRAPPER_OFFLINE; earlier gameplay separately scoped",
+      "aliases": [
+        "shark_attack"
+      ],
+      "tags": [
+        "prepared",
+        "quest"
+      ],
+      "related_ids": [
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ],
+      "initialization_policy": "On actual mission start, commands on first actual use; changed initialization offline-checked29.10, new live trial not claimed"
+    },
+    {
+      "id": "ON-UI-INVENTORY-001",
+      "path": "ui/ON-UI-INVENTORY-001.md",
+      "title": "Инвентарь: вход, слоты и операции с предметами",
+      "kind": "ui_skill",
+      "status": "AGENT_VERIFIED_SCOPED; Canned use route human-approved in canned_eat; broader speed and universal handler not approved",
+      "aliases": [
+        "inventory",
+        "инвентарь",
+        "рюкзак",
+        "backpack",
+        "разделение стака",
+        "экипировать предмет",
+        "перенос предметов",
+        "удержание предмета",
+        "зажать предмет",
+        "описание предмета",
+        "split",
+        "merge",
+        "сортировка инвентаря",
+        "использовать еду",
+        "удалить предмет"
+      ],
+      "tags": [
+        "ui",
+        "inventory",
+        "items",
+        "stack",
+        "equip"
+      ],
+      "related_ids": [
+        "ON-UI-SKILLS-001",
+        "ON-UI-ERRORWATCH-001",
+        "ON-QUEST-WOODEN-HOOK-001"
+      ],
+      "last_observation": {
+        "date": "2026-10-29",
+        "scope": "current Editor inventory learning; historical interventions retained",
+        "result": "open/hold/drag/split/merge/swap/equip/sort/use/remove/locked-tab offer scoped checks passed; final expected deltas only",
+        "cleanup_confirmed": true,
+        "evidence": "brain-store/inventory-learning/2026-10-29/report.json",
+        "learning_notes": "episodes/ON-UI-INVENTORY-2026-10-29.md"
+      }
+    },
+    {
+      "id": "ON-QUEST-CANNED-EAT-001",
+      "path": "missions/ON-QUEST-CANNED-EAT-001.md",
+      "title": "canned_eat: съесть консервы через навык инвентаря",
+      "kind": "mission",
+      "status": "HUMAN_APPROVED_SCOPED; fast visible route accepted 2026-10-29; reusable packaging offline-checked separately",
+      "aliases": [
+        "canned_eat",
+        "съесть консервы",
+        "миссия с консервами"
+      ],
+      "tags": [
+        "onboarding",
+        "quest",
+        "inventory",
+        "consume"
+      ],
+      "related_ids": [
+        "ON-UI-INVENTORY-001",
+        "ON-QUEST-START-001",
+        "ON-UI-ERRORWATCH-001"
+      ]
+    }
+  ]
+}

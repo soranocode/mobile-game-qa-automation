@@ -1,0 +1,70 @@
+// Registered once by install.mjs. No stored target coordinates; invoked only after wake.
+// args = Movement, attacking SharkAISystem or null, live range, explicit XZ goal or null, optional ranged reposition.
+var m=(Survival.Views.Movement)args[0];var shark=args[1] as Enemy.BrutalShark.SharkAISystem;var range=(float)args[2];var explicitGoal=args[3] as float[];
+bool ranged=args.Length>4&&(bool)args[4];
+var culture=System.Globalization.CultureInfo.InvariantCulture;System.Func<float,string> f=v=>v.ToString("R",culture);
+var floors=UnityEngine.Object.FindObjectsByType<UnityEngine.BoxCollider>(UnityEngine.FindObjectsSortMode.None).Where(c=>c.enabled&&!c.isTrigger&&c.gameObject.activeInHierarchy&&c.gameObject.scene==m.gameObject.scene&&c.name.IndexOf("foundation",System.StringComparison.OrdinalIgnoreCase)>=0).ToArray();
+if(floors.Length==0)return new object[]{"no_support"};
+foreach(var floor in floors){var r=floor.transform.eulerAngles;if(UnityEngine.Mathf.Abs(r.x)>.001f||UnityEngine.Mathf.Abs(r.z)>.001f||UnityEngine.Mathf.Abs(r.y/90-UnityEngine.Mathf.Round(r.y/90))>.001f)return new object[]{"unsupported_floor_rotation"};}
+var deck=floors.Max(c=>c.bounds.max.y);if(floors.Min(c=>c.bounds.max.y)<deck-.02f)return new object[]{"multiple_deck_heights"};
+var cc=m.GetComponent<UnityEngine.CharacterController>();var bodyRadius=cc.radius*UnityEngine.Mathf.Max(UnityEngine.Mathf.Abs(m.transform.lossyScale.x),UnityEngine.Mathf.Abs(m.transform.lossyScale.z));
+// COLLISION_POLICY_BEGIN
+System.Func<UnityEngine.Collider,bool> collisionEnabled=c=>c!=null&&c.enabled&&!c.isTrigger&&c.gameObject.activeInHierarchy&&!UnityEngine.Physics.GetIgnoreLayerCollision(cc.gameObject.layer,c.gameObject.layer)&&!UnityEngine.Physics.GetIgnoreCollision(cc,c);
+// COLLISION_POLICY_END
+int collisionMask=0;for(int layer=0;layer<32;layer++)if(!UnityEngine.Physics.GetIgnoreLayerCollision(cc.gameObject.layer,layer))collisionMask|=1<<layer;
+float edge=UnityEngine.Mathf.Max(.30f,bodyRadius+cc.skinWidth+.12f),obstacleMargin=UnityEngine.Mathf.Max(.23f,bodyRadius+cc.skinWidth+.05f);
+var floorIds=new System.Collections.Generic.HashSet<int>(floors.Select(c=>c.GetInstanceID()));
+var boxes=floors.Select(c=>new[]{c.bounds.min.x,c.bounds.min.z,c.bounds.max.x,c.bounds.max.z}).ToArray();
+var xmin=boxes.Min(r=>r[0]);var zmin=boxes.Min(r=>r[1]);var xmax=boxes.Max(r=>r[2]);var zmax=boxes.Max(r=>r[3]);
+var obstacles=UnityEngine.Physics.OverlapBox(new UnityEngine.Vector3((xmin+xmax)*.5f,deck+.85f,(zmin+zmax)*.5f),new UnityEngine.Vector3((xmax-xmin)*.5f+obstacleMargin,.8f,(zmax-zmin)*.5f+obstacleMargin),UnityEngine.Quaternion.identity,collisionMask,UnityEngine.QueryTriggerInteraction.Ignore).Where(c=>collisionEnabled(c)&&!floorIds.Contains(c.GetInstanceID())&&c.GetComponentInParent<Survival.Views.Movement>()==null&&c.gameObject.layer!=UnityEngine.LayerMask.NameToLayer("Enemy")).Select(c=>new[]{c.bounds.min.x-obstacleMargin,c.bounds.min.z-obstacleMargin,c.bounds.max.x+obstacleMargin,c.bounds.max.z+obstacleMargin}).ToArray();
+System.Func<float,float,bool> permitted=(x,z)=>{float sum=0;foreach(var r in boxes)sum+=UnityEngine.Mathf.Max(0,UnityEngine.Mathf.Min(x+edge,r[2])-UnityEngine.Mathf.Max(x-edge,r[0]))*UnityEngine.Mathf.Max(0,UnityEngine.Mathf.Min(z+edge,r[3])-UnityEngine.Mathf.Max(z-edge,r[1]));return sum>=4*edge*edge-.00001f&&!obstacles.Any(r=>x>r[0]&&x<r[2]&&z>r[1]&&z<r[3]);};
+var xs=boxes.SelectMany(r=>new[]{r[0]-edge,r[0]+edge,r[2]-edge,r[2]+edge}).Concat(obstacles.SelectMany(r=>new[]{r[0],r[2]})).Where(x=>x>xmin&&x<xmax).Concat(new[]{xmin,xmax}).Distinct().OrderBy(x=>x).ToArray();
+var zs=boxes.SelectMany(r=>new[]{r[1]-edge,r[1]+edge,r[3]-edge,r[3]+edge}).Concat(obstacles.SelectMany(r=>new[]{r[1],r[3]})).Where(z=>z>zmin&&z<zmax).Concat(new[]{zmin,zmax}).Distinct().OrderBy(z=>z).ToArray();
+if(xs.Length*zs.Length>16000)return new object[]{"geometry_budget_exceeded"};
+int width=xs.Length-1,height=zs.Length-1,total=width*height;var safe=new bool[total];var rects=new System.Collections.Generic.List<float[]>();
+for(int j=0;j<height;j++)for(int i=0;i<width;i++){int n=j*width+i;safe[n]=permitted((xs[i]+xs[i+1])*.5f,(zs[j]+zs[j+1])*.5f);if(safe[n])rects.Add(new[]{xs[i],zs[j],xs[i+1],zs[j+1]});}
+System.Func<int,UnityEngine.Vector2> center=n=>new UnityEngine.Vector2((xs[n%width]+xs[n%width+1])*.5f,(zs[n/width]+zs[n/width+1])*.5f);
+System.Func<UnityEngine.Vector2,int> locate=p=>{for(int n=0;n<total;n++)if(safe[n]&&p.x>=xs[n%width]-.00001f&&p.x<=xs[n%width+1]+.00001f&&p.y>=zs[n/width]-.00001f&&p.y<=zs[n/width+1]+.00001f)return n;return -1;};
+var start=new UnityEngine.Vector2(m.Position.x,m.Position.z);var origin=locate(start);
+if(!cc.isGrounded)return new object[]{"not_grounded_yet"};
+if(origin<0){
+    // A spawned player may stand just outside our extra control reserve, while the
+    // actual body is fully supported. Recover only along a separately checked short
+    // segment; never silently snap the route start or step over water/obstacles.
+    float physical=bodyRadius+cc.skinWidth+.02f;
+    var shrink=obstacleMargin-bodyRadius;
+    System.Func<float,float,bool> bodySupported=(x,z)=>{float sum=0;foreach(var r in boxes)sum+=UnityEngine.Mathf.Max(0,UnityEngine.Mathf.Min(x+physical,r[2])-UnityEngine.Mathf.Max(x-physical,r[0]))*UnityEngine.Mathf.Max(0,UnityEngine.Mathf.Min(z+physical,r[3])-UnityEngine.Mathf.Max(z-physical,r[1]));return sum>=4*physical*physical-.00001f&&!obstacles.Any(r=>x>r[0]+shrink&&x<r[2]-shrink&&z>r[1]+shrink&&z<r[3]-shrink);};
+    foreach(var candidate in rects.Select(r=>new UnityEngine.Vector2(UnityEngine.Mathf.Clamp(start.x,r[0]+.02f,r[2]-.02f),UnityEngine.Mathf.Clamp(start.y,r[1]+.02f,r[3]-.02f))).OrderBy(p=>UnityEngine.Vector2.Distance(start,p))){
+        if(UnityEngine.Vector2.Distance(start,candidate)>.45f)break;
+        // A nearby station can require an elbow: first move parallel to it, then inland.
+        foreach(var step in new[]{candidate,new UnityEngine.Vector2(candidate.x,start.y),new UnityEngine.Vector2(start.x,candidate.y)}){
+            var distance=UnityEngine.Vector2.Distance(start,step);if(distance<.01f)continue;bool supported=true;int steps=UnityEngine.Mathf.Max(1,UnityEngine.Mathf.CeilToInt(distance/.015f));
+            for(int s=0;s<=steps;s++){var p=UnityEngine.Vector2.Lerp(start,step,s/(float)steps);if(!bodySupported(p.x,p.y)){supported=false;break;}}
+            if(supported)return new object[]{"recovery_needed",new[]{step.x,step.y},distance};
+        }
+    }
+    return new object[]{"start_outside_supported_region"};
+}
+var distances=Enumerable.Repeat(float.PositiveInfinity,total).ToArray();var previous=Enumerable.Repeat(-1,total).ToArray();var queue=new System.Collections.Generic.SortedSet<System.Tuple<float,int>>();distances[origin]=UnityEngine.Vector2.Distance(start,center(origin));queue.Add(System.Tuple.Create(distances[origin],origin));
+while(queue.Count>0){var pair=queue.Min;queue.Remove(pair);int n=pair.Item2;if(pair.Item1>distances[n]+.00001f)continue;int i=n%width,j=n/width;foreach(var v in new[]{i>0?n-1:-1,i<width-1?n+1:-1,j>0?n-width:-1,j<height-1?n+width:-1})if(v>=0&&safe[v]){var cost=distances[n]+UnityEngine.Vector2.Distance(center(n),center(v));if(cost<distances[v]){distances[v]=cost;previous[v]=n;queue.Add(System.Tuple.Create(cost,v));}}}
+var camera=UnityEngine.Camera.main;if(camera==null)return new object[]{"camera_unknown"};
+var hitPoint=shark==null?UnityEngine.Vector3.zero:shark.HitPointTransform==null?shark.transform.position:shark.HitPointTransform.position;
+var probe=new UnityEngine.RaycastHit[ranged?30:5];int chosen=-1;float best=float.PositiveInfinity;var goal=UnityEngine.Vector2.zero;
+for(int n=0;n<total;n++){if(!safe[n]||float.IsInfinity(distances[n]))continue;UnityEngine.Vector2 candidate;
+    if(explicitGoal!=null){candidate=new UnityEngine.Vector2(explicitGoal[0],explicitGoal[1]);if(locate(candidate)!=n)continue;}
+    else{int i=n%width,j=n/width;var toward=ranged?start:new UnityEngine.Vector2(hitPoint.x,hitPoint.z);candidate=new UnityEngine.Vector2(UnityEngine.Mathf.Clamp(toward.x,xs[i]+.005f,xs[i+1]-.005f),UnityEngine.Mathf.Clamp(toward.y,zs[j]+.005f,zs[j+1]-.005f));
+        var futureCamera=camera.transform.position+new UnityEngine.Vector3(candidate.x-start.x,0,candidate.y-start.y);var direction=(hitPoint-futureCamera).normalized;
+        if(UnityEngine.Vector3.Distance(futureCamera,hitPoint)>range+camera.nearClipPlane+.65f)continue;
+        var ray=new UnityEngine.Ray(futureCamera+direction*camera.nearClipPlane,direction);var count=ranged?Survival.Weapon.HitScanShooter.CollectHits(ray,range,probe):UnityEngine.Physics.SphereCastNonAlloc(ray,.33f,probe,range);if(ranged&&count>=probe.Length)continue;UnityEngine.Collider firstEnemy=null;
+        for(int k=0;k<count;k++)if(probe[k].collider!=null&&probe[k].collider.gameObject.layer==UnityEngine.LayerMask.NameToLayer("Enemy")){firstEnemy=probe[k].collider;break;}
+        if(firstEnemy==null||firstEnemy.GetComponentInParent<Enemy.BrutalShark.SharkAISystem>()!=shark)continue;
+    }
+    var score=distances[n]+UnityEngine.Vector2.Distance(center(n),candidate);if(score<best){best=score;chosen=n;goal=candidate;}
+}
+if(chosen<0)return new object[]{explicitGoal==null?(ranged?"no_reachable_firing_position":"no_reachable_attack_position"):"goal_unreachable"};
+var chain=new System.Collections.Generic.List<int>();for(int n=chosen;n>=0;n=previous[n])chain.Add(n);chain.Reverse();
+var points=new System.Collections.Generic.List<UnityEngine.Vector2>{start};points.AddRange(chain.Select(center));points.Add(goal);
+System.Func<UnityEngine.Vector2,UnityEngine.Vector2,bool> clear=(a,b)=>{var intervals=new System.Collections.Generic.List<UnityEngine.Vector2>();var delta=b-a;foreach(var r in rects){float lo=0,hi=1;for(int axis=0;axis<2;axis++){var s=axis==0?a.x:a.y;var d=axis==0?delta.x:delta.y;if(UnityEngine.Mathf.Abs(d)<.000001f){if(s<r[axis]-.00001f||s>r[axis+2]+.00001f){hi=-1;break;}}else{var u=(r[axis]-s)/d;var v=(r[axis+2]-s)/d;lo=UnityEngine.Mathf.Max(lo,UnityEngine.Mathf.Min(u,v));hi=UnityEngine.Mathf.Min(hi,UnityEngine.Mathf.Max(u,v));}}if(hi>=lo)intervals.Add(new UnityEngine.Vector2(lo,hi));}float end=0;foreach(var interval in intervals.OrderBy(v=>v.x)){if(interval.x>end+.000001f)return false;end=UnityEngine.Mathf.Max(end,interval.y);if(end>=.999999f)return true;}return false;};
+var simple=new System.Collections.Generic.List<UnityEngine.Vector2>{start};int at=0;while(at<points.Count-1){int next=points.Count-1;while(next>at+1&&!clear(points[at],points[next]))next--;if(!clear(points[at],points[next]))return new object[]{"unsafe_link"};simple.Add(points[next]);at=next;}
+var protocol=new[]{m.gameObject.scene.handle.ToString(culture),f(deck),"20","1","0.045","3.2",string.Join(";",simple.Select(p=>f(p.x)+","+f(p.y)).ToArray()),string.Join(";",rects.Select(r=>string.Join(",",r.Select(f).ToArray())).ToArray()),string.Join(",",floors.Select(c=>c.GetInstanceID().ToString(culture)).ToArray()),"runtime-rebuilt-at-interruption",string.Join(";",floors.Select(c=>c.GetInstanceID().ToString(culture)+","+string.Join(",",new[]{c.bounds.min.x,c.bounds.min.y,c.bounds.min.z,c.bounds.max.x,c.bounds.max.y,c.bounds.max.z}.Select(f).ToArray())).ToArray())};
+return new object[]{"planned",protocol,new[]{goal.x,goal.y},simple.Count};

@@ -1,0 +1,77 @@
+// Ordinary move/look gestures. No quest completion or player-transform writes.
+const string key="QaAgent.PreparedControl.v1";
+var mode=UnityEditor.SessionState.GetString(key+".mode","snapshot");
+if(mode=="prepare")return new{status="compiled_only",input_sent=false};
+__ERROR_WATCH_SETUP__
+var old=System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if(mode=="snapshot")return old==null?(object)new{status="idle"}:old["result"];
+if(mode=="stop"){if(old!=null&&!(bool)old["finished"])((System.Action)old["cancel"])();return new{status="stopped"};}
+if(mode!="run"||!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)||!UnityEditor.EditorApplication.isPlaying||UnityEditor.EditorApplication.isPaused)return new{status="inactive"};
+if(errorWatchBlocked())return new{status="blocked_new_error",error_watch=errorWatchSnapshot()};
+if(old!=null&&!(bool)old["finished"])return new{status="busy"};
+var kind=UnityEditor.SessionState.GetString("QaAgent.PreparedControl.kind","");
+if(kind!="move"&&kind!="look")return new{status="invalid_kind"};
+var hud=UnityEngine.Object.FindFirstObjectByType<Survival.Views.UIView.UIHudControlsPanel>();
+var player=UnityEngine.Object.FindFirstObjectByType<Survival.Views.Movement>();var es=UnityEngine.EventSystems.EventSystem.current;
+if(hud==null||player==null||es==null)return new{status="input_source_unknown"};
+var control=kind=="move"?(UnityEngine.Component)hud.MoveTouchpad:hud.LookTouchpad;
+if(control==null||!control.gameObject.activeInHierarchy||(kind=="move"&&hud.MoveTouchpad.Block))return new{status="control_unavailable"};
+var body=player.GetComponent<UnityEngine.CharacterController>();
+var floors=UnityEngine.Object.FindObjectsByType<UnityEngine.BoxCollider>(UnityEngine.FindObjectsSortMode.None).Where(c=>c.enabled&&!c.isTrigger&&c.gameObject.scene==player.gameObject.scene&&c.name.IndexOf("foundation",System.StringComparison.OrdinalIgnoreCase)>=0).ToArray();
+float margin=body == null ? .3f : body.radius*player.transform.lossyScale.x+body.skinWidth+.08f;
+System.Func<UnityEngine.Vector3,bool> supported=pos=>{
+ if(body==null||!player.Grounded)return false;
+ foreach(var offset in new[]{new UnityEngine.Vector2(-margin,-margin),new UnityEngine.Vector2(-margin,margin),new UnityEngine.Vector2(margin,-margin),new UnityEngine.Vector2(margin,margin),UnityEngine.Vector2.zero}){
+  var x=pos.x+offset.x;var z=pos.z+offset.y;
+  if(!floors.Any(c=>c!=null&&c.enabled&&c.gameObject.activeInHierarchy&&x>=c.bounds.min.x&&x<=c.bounds.max.x&&z>=c.bounds.min.z&&z<=c.bounds.max.z))return false;
+ }return true;
+};
+System.Func<UnityEngine.Vector3,bool> clear=pos=>{
+ if(body==null)return false;var bodyRadius=body.bounds.extents.x;var h=UnityEngine.Mathf.Max(0,body.bounds.extents.y-bodyRadius);
+ var center=body.bounds.center+(pos-player.Position);
+ return !UnityEngine.Physics.OverlapCapsule(center+UnityEngine.Vector3.up*h,center-UnityEngine.Vector3.up*h,bodyRadius*.95f,~0,UnityEngine.QueryTriggerInteraction.Ignore).Any(c=>c!=body&&c.GetComponentInParent<Survival.Views.Movement>()!=player&&!floors.Any(f=>f==c));
+};
+var move=UnityEngine.Vector2.zero;var heading=player.CameraForward;heading.y=0;
+if(kind=="move"&&heading.sqrMagnitude<.001f)return new{status="heading_unknown"};heading.Normalize();
+if(kind=="move"){
+ foreach(var v in new[]{UnityEngine.Vector2.up,UnityEngine.Vector2.down,UnityEngine.Vector2.left,UnityEngine.Vector2.right}){
+  var world=heading*v.y+new UnityEngine.Vector3(heading.z,0,-heading.x)*v.x;
+  if(supported(player.Position)&&supported(player.Position+world*.22f)&&clear(player.Position+world*.22f)){move=v*.2f;break;}
+ }if(move==UnityEngine.Vector2.zero)return new{status="no_safe_movement",input_sent=false};
+}
+var rect=control.GetComponent<UnityEngine.RectTransform>();var canvas=control.GetComponentInParent<UnityEngine.Canvas>();
+var view=UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().FirstOrDefault(w=>w.GetType().Name=="GameView");
+if(rect==null||canvas==null||view==null)return new{status="view_unknown"};
+view.Focus();view.Repaint();UnityEngine.EventSystems.PointerEventData pointer=null;
+foreach(var offset in (kind=="move"?new[]{new UnityEngine.Vector2(-.4f,-.4f),new UnityEngine.Vector2(-.4f,0),new UnityEngine.Vector2(-.25f,-.3f)}:new[]{new UnityEngine.Vector2(.25f,0),new UnityEngine.Vector2(.4f,.1f),UnityEngine.Vector2.zero})){
+ var point=UnityEngine.RectTransformUtility.WorldToScreenPoint(canvas.renderMode==UnityEngine.RenderMode.ScreenSpaceOverlay?null:canvas.worldCamera,rect.TransformPoint(rect.rect.center+new UnityEngine.Vector2(rect.rect.width*offset.x,rect.rect.height*offset.y)));
+ var data=new UnityEngine.EventSystems.PointerEventData(es){position=point,pressPosition=point,pointerId=-94,button=UnityEngine.EventSystems.PointerEventData.InputButton.Left,useDragThreshold=false};
+ var hits=new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();es.RaycastAll(data,hits);
+ if(hits.Count==0||UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IDragHandler>(hits[0].gameObject)!=control.gameObject)continue;
+ data.pointerCurrentRaycast=hits[0];data.pointerPressRaycast=hits[0];data.pointerDrag=control.gameObject;pointer=data;break;
+}if(pointer==null)return new{status="control_covered",input_sent=false};
+var radius=1f;if(kind=="move"){var field=control.GetType().GetField("_radius",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);radius=field==null?0:(float)field.GetValue(control);if(radius<=0)return new{status="radius_unknown"};}
+var generation=UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence",0);var scene=player.gameObject.scene.handle;
+var began=UnityEditor.EditorApplication.timeSinceStartup;var startPosition=player.Position;var startForward=player.CameraForward;
+var startFrame=UnityEngine.Time.frameCount;var lastFrame=-1;bool started=false,finished=false;
+var saved=new System.Collections.Generic.Dictionary<string,object>{{"finished",false},{"result",new{status="running"}}};System.AppDomain.CurrentDomain.SetData(key,saved);
+UnityEditor.EditorApplication.CallbackFunction tick=null;
+System.Action<string> finish=status=>{if(finished)return;finished=true;UnityEditor.EditorApplication.update-=tick;
+ try{pointer.delta=UnityEngine.Vector2.zero;if(started&&control!=null){UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.endDragHandler);UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);}}
+ finally{saved["finished"]=true;saved["result"]=new{status=status,released=true,input_sent=started,kind=kind,
+  displacement=player==null?0:UnityEngine.Vector3.Distance(startPosition,player.Position),
+  look_degrees=player==null?0:UnityEngine.Vector3.Angle(startForward,player.CameraForward),error_watch=errorWatchSnapshot()};}
+};saved["cancel"]=(System.Action)(()=>finish("cancelled"));
+tick=()=>{try{
+ if(errorWatchBlocked()||!UnityEditor.SessionState.GetBool("QaAgent.FastUi.active",false)||generation!=UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence",0)||!UnityEditor.EditorApplication.isPlaying||UnityEditor.EditorApplication.isPaused){finish("cancelled");return;}
+ if(player==null||control==null||player.gameObject.scene.handle!=scene){finish("source_changed");return;}
+ if(view==null||UnityEditor.EditorWindow.focusedWindow!=view){finish("focus_lost");return;}
+ if(kind=="move"&&!supported(player.Position)){finish("support_lost");return;}
+ var age=UnityEditor.EditorApplication.timeSinceStartup-began;if(age>1){finish("timeout");return;}
+ if(UnityEngine.Time.frameCount==lastFrame)return;lastFrame=UnityEngine.Time.frameCount;
+ if(!started&&lastFrame>startFrame){started=true;pointer.dragging=true;UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.initializePotentialDrag);UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.beginDragHandler);}
+ if(started){if(age>=.14){finish("completed");return;}pointer.delta=kind=="move"?move*radius:new UnityEngine.Vector2(2,0);pointer.position=pointer.pressPosition+pointer.delta;UnityEngine.EventSystems.ExecuteEvents.Execute(control.gameObject,pointer,UnityEngine.EventSystems.ExecuteEvents.dragHandler);}
+ view.Repaint();UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+ }catch{finish("executor_exception");}};
+UnityEditor.EditorApplication.update+=tick;UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+return new{status="running",input_sent=false,kind=kind};

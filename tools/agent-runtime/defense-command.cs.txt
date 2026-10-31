@@ -1,0 +1,20 @@
+// Fixed prepared operation on our supervisor, not a direct enemy/quest method.
+__ERROR_WATCH_SETUP__
+var lines=System.IO.File.ReadAllLines(UnityEditor.SessionState.GetString("QaAgent.PreparedQuest.params",""));
+var action=lines.Length==3?lines[2]:"";
+var d=System.AppDomain.CurrentDomain.GetData("QaAgent.SharkDefense.v1") as System.Collections.Generic.Dictionary<string,object>;
+if(d==null)return new{status="not_installed"};
+if(action=="read")return ((System.Func<object>)d["read"])();
+if(action=="stop"){((System.Action)d["dispose"])();return new{status="stopped"};}
+if(action=="disarm"){
+ if((bool)d["busy"])return new{status="busy_use_stop"};d["armed"]=false;return ((System.Func<object>)d["read"])();
+}
+if(errorWatchBlocked())return new{status="blocked_new_error",error_watch=errorWatchSnapshot()};
+if(action=="arm"){
+ if((string)d["phase"]=="needs_review")return new{status="review_required"};d["armed"]=true;return ((System.Func<object>)d["read"])();
+}
+if(action=="defend"){
+ if(!Survival.Ai.EnemyShark.SharkDetector.SharkAttackObserver.IsSharkAttack)return new{status="no_current_attack",input_sent=false};
+ ((System.Action)d["combat"])();return ((System.Func<object>)d["read"])();
+}
+return new{status="unsupported_defense_operation"};

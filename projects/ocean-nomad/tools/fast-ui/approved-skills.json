@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "source": "human_user, 2026-10-22: consolidate learned behavior after approval",
+  "policy": "Consolidate human-approved behavior without asking again; retain verification scope and stop at unknown states. Agent observations alone do not approve new requirements.",
+  "skills": {
+    "open_game_settings": {
+      "module": "approved-ui.mjs",
+      "export": "runApprovedUiSkill",
+      "knowledge": "ON-UI-SETTINGS-001",
+      "approval": "human-approved gameplay/map settings route",
+      "verification": "settings open; excludes main-menu entry"
+    },
+    "new_game": {
+      "module": "skill.mjs",
+      "export": "runKnownNewGame",
+      "knowledge": "ON-UI-NEWGAME-001",
+      "approval": "explicit familiar-route and progress-deletion approval",
+      "verification": "UI route only",
+      "accepted_speed_seconds": 0.395
+    },
+    "main_menu": {
+      "module": "main-menu.mjs",
+      "export": "runKnownMainMenu",
+      "knowledge": "ON-UI-MAINMENU-001",
+      "approval": "human requested learning exit route",
+      "verification": "final main menu; optional dialogs",
+      "speed_acceptance": "no explicit human acceptance recorded",
+      "overlay_knowledge": "ON-UI-OVERLAYS-001",
+      "learned_optional_pages": [
+        "intro_build → Continue",
+        "intro_survive → Continue",
+        "offer → Close"
+      ]
+    },
+    "settings_ui": {
+      "module": "settings-skill.mjs",
+      "export": "runApprovedSettingsChecks",
+      "knowledge": "ON-UI-SETTINGS-001",
+      "approval": "human requested settings UI test and consolidation",
+      "verification": "13 learned UI assertions; not physical or external effects",
+      "speed_acceptance": "measured live; human acceptance not yet received",
+      "last_measured_seconds": 4.055
+    }
+  },
+  "shared_policy": "ON-UI-ERRORWATCH-001",
+  "editor_exclusions": [
+    "login",
+    "restore_purchases"
+  ],
+  "not_promoted": [
+    "unknown dialogs",
+    "external link destinations",
+    "actual audio/vibration/camera/rendering effects",
+    "quest reset correctness",
+    "unmonitored legacy startup executor"
+  ]
+}

@@ -3,8 +3,14 @@ description: Shared preparation-stage constraints and repository context
 alwaysApply: true
 ---
 
-Read and follow the repository root AGENTS.md and README.md.
-The current stage is preparation. The human deferred tests, all ADB commands,
-device checks, and gameplay until explicitly starting the practical stage.
+Follow the repository root AGENTS.md. Read README.md for setup or automation edits,
+not on each routine replay or supplied-packet memory task. For a familiar game task,
+start with `python tools/knowledge/dispatch.py TASK --prepare` and the selected packet.
+The human has entered the Unity Editor practical stage. Follow the latest
+requested subtask; planning/documentation does not start another gameplay run.
 Use project plans in projects/ and shared instructions in docs/.
 Keep local evidence and credentials out of Git. Coordinate edits with other agents.
+In multi-agent Unity QA, the parent is coordinator and delegates all Unity access
+to one separate ocean-mcp-executor. The coordinator prepares the queue offline;
+it must not open the live runtime or call Unity MCP itself. Use
+brain/agents/ROLE_HANDOFF.md.

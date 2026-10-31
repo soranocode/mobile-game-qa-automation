@@ -1,0 +1,22 @@
+// Read only the prepared mission's known UI, not the hierarchy or screenshots.
+__ERROR_WATCH_SETUP__
+System.Func<string,bool> shown=path=>{var g=UnityEngine.GameObject.Find(path);return g!=null&&g.activeInHierarchy;};
+var root=UnityEngine.GameObject.Find("CanvasInterface/StoryboardWindow");
+var identity=root==null?"":string.Join("|",root.GetComponentsInChildren<UnityEngine.UI.Text>(false).Select(t=>t.text).ToArray());
+var primary="";var secondary="";
+var hud=UnityEngine.Object.FindFirstObjectByType<Survival.Views.UIView.UIHudControlsPanel>();
+if(hud!=null&&hud.ActionButtons!=null&&hud.ActionButtons.Length>0&&hud.ActionButtons[0]!=null){
+ var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic;
+ var f=hud.ActionButtons[0].GetType().GetField("_pressExtended",flags);
+ var callback=f==null?null:f.GetValue(hud.ActionButtons[0]) as System.Delegate;
+ var owner=callback==null?null:callback.Target;
+ var a=owner==null?null:owner.GetType().GetField("_activityController",flags);
+ var activity=a==null?null:a.GetValue(owner) as Survival.Activities.ActivityController;
+ if(activity!=null){primary=activity.CurrentActivity==null?"":activity.CurrentActivity.GetType().Name;secondary=activity.OtherActivity==null?"":activity.OtherActivity.GetType().Name;}
+}
+return new{status="observed",story_identity=identity.Length>1200?identity.Substring(0,1200):identity,
+ story_next=shown("CanvasInterface/StoryboardWindow/Next"),story_finish=shown("CanvasInterface/StoryboardWindow/Finish"),
+ dialog_continue=shown("CanvasController/DialogWindow/Content/Buttons/DialogChoiceButton(Clone)"),
+ craft_open=shown("CanvasInterface/Craft/SafeArea/RootNavigationWidget/CloseButton"),
+ craft_create=shown("CanvasInterface/Craft/Container/Second/CraftStudiedInfoPanel/ShowRecipePanel/Craft/Craft/UIButtonCraftCommon"),
+ primary=primary,secondary=secondary,error_watch=errorWatchSnapshot()};

@@ -1,0 +1,14 @@
+{
+  "schema": "ocean-rag-smoke/1",
+  "scope": "Small authored retrieval smoke set; not a general accuracy benchmark",
+  "cases": [
+    {"query": "Достань из моря три плывущих материала", "expected_any": ["ON-QUEST-HOOK-USE-001", "ON-SPATIAL-HOOK-COLLECT-001", "ON-MECH-HOOK-001"]},
+    {"query": "Персонаж голоден, нужно открыть рюкзак и съесть консервированную еду", "expected_any": ["ON-QUEST-CANNED-EAT-001", "ON-UI-INVENTORY-001"]},
+    {"query": "Плот грызёт морской хищник, подойди и ударь его вблизи", "expected_any": ["ON-COMBAT-SHARK-MELEE-001", "ON-SAFETY-SHARK-DEFENSE-001", "ON-ENEMY-SHARK-001", "ON-QUEST-SHARK-ATTACK-001"]},
+    {"query": "Пропусти вступительный рассказ и закончи последнюю сюжетную страницу", "expected_any": ["ON-QUEST-INTRO-001"]},
+    {"query": "Изготовь деревянный инструмент для вылавливания добычи", "expected_any": ["ON-QUEST-WOODEN-HOOK-001", "ON-MECH-HOOK-001"]},
+    {"query": "Проверь звук, музыку, вибрацию и смену языка", "expected_any": ["ON-UI-SETTINGS-001"]},
+    {"query": "Пройти по настилу, обойти препятствия и не провалиться в отверстия", "expected_any": ["ON-NAV-RAFT-001", "ON-WORLD-RAFT-001"]},
+    {"query": "Удерживать вещь пальцем, чтобы прочитать её описание", "expected_any": ["ON-UI-INVENTORY-001"]}
+  ]
+}

@@ -1,0 +1,273 @@
+{
+  "id": "ON-UI-NEWGAME-001",
+  "kind": "adaptive_ui_skill",
+  "title": "Начать новую игру через настройки",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0",
+  "runtime": "UnityEditor",
+  "observed_at": "2026-10-22T08:20:44.6600093Z",
+  "last_confirmed_at": "2026-10-22",
+  "status": "provisional",
+  "source": [
+    "human_demonstration",
+    "human_debrief"
+  ],
+  "verified_by": {
+    "ui_route_observation": "Codex, offline action journal",
+    "production_expected_behavior": "human_user",
+    "editor_progress_outcome": "human_user",
+    "settings_routes_and_dev_overlay": "human_user, 2026-10-22",
+    "settings_upper_edge_and_confirmation": "Codex via MCP, 2026-10-22; human accepted UI route scope"
+  },
+  "content": "На запрос «начни новую игру» быстро пройти по текущему UI: открыть меню при необходимости, выбрать настройки, «НАЧАТЬ ИГРУ ЗАНОВО» и «ДА». Цель этого навыка — правильные переходы и нажатия; фактический сброс прогресса и отличие Editor от продакшена в текущую проверку не входят.",
+  "evidence_refs": [
+    {
+      "episode_id": "20261022T082044Z-0929c80e",
+      "label": "новая игра",
+      "availability": "local_only_outside_automation_repository",
+      "journal_complete": true,
+      "video_available": false,
+      "video_status": "disabled, not requested",
+      "duration_seconds": 15.495,
+      "screen_size": [
+        1280,
+        720
+      ],
+      "input_events": 417,
+      "state_events": 122,
+      "autonomous_replay": "NOT_RUN"
+    },
+    {
+      "episode_id": "2026-10-22-newgame-01",
+      "availability": "local_only_outside_automation_repository",
+      "result": "ROUTE_PARTIAL_STOPPED_BY_HUMAN",
+      "starting_context": "raft first-person HUD",
+      "settings_opened": false,
+      "new_game_pressed": false,
+      "reset_confirmed": false,
+      "unintended_input": "A click was intercepted by TestHudLogOption; effect not verified",
+      "route_context_and_overlay_confirmed_by": "human_user"
+    },
+    {
+      "episode_id": "2026-10-22-newgame-05",
+      "availability": "local_only_outside_automation_repository",
+      "result": "NEEDS_REVIEW",
+      "reason": "not_sent_covered at settings after opening dashboard",
+      "elapsed_seconds": 0.329
+    },
+    {
+      "episode_id": "2026-10-22-newgame-06",
+      "availability": "local_only_outside_automation_repository",
+      "result": "PASS_UI_ROUTE",
+      "starting_context": "open dashboard",
+      "elapsed_seconds": 0.4,
+      "ui_actions": [
+        "open_settings",
+        "start_new_game",
+        "confirm_new_game"
+      ],
+      "full_hud_route_timing": false
+    }
+  ],
+  "target_policy": {
+    "identity": "Назначение по тексту, значку и контексту окна; старые координаты не использовать",
+    "pre_action_semantics_checks": "Не изучать код и callback перед каждым нажатием",
+    "path_hints": "Пути из журнала — подсказки для поиска, не универсальные идентификаторы; UIButtonGreenDark(Clone) без контекста не идентифицирует подтверждение",
+    "confirmation_label": "ДА — прочитана в текущем UIPopupDefault; рядом есть отдельная кнопка НЕТ",
+    "dev_overlay": {
+      "label": "None",
+      "applies_to": "dev build only",
+      "human_confirmed": true,
+      "effect": "May cover the lower/central part of Settings in dashboard",
+      "action": "Click the exposed upper edge of the actual Settings button, using current UI geometry; do not click None",
+      "fixed_screen_coordinates": false
+    }
+  },
+  "demonstrated_actions": [
+    {
+      "intent": "Открыть настройки по шестерёнке",
+      "t_seconds": 2.273,
+      "evidence_sequences": [
+        53,
+        55
+      ],
+      "path_hint": "MapComplexView/*/UIHudTopButtonsPanel/Settings"
+    },
+    {
+      "intent": "Выбрать «НАЧАТЬ ИГРУ ЗАНОВО» под FPS",
+      "t_seconds": 3.976,
+      "evidence_sequences": [
+        139,
+        140
+      ],
+      "path_hint": "UIPause/Panel/Elements/BottomElements/NewGame",
+      "visible_label_source": "human_user"
+    },
+    {
+      "intent": "Подтвердить выбор во всплывающем окне",
+      "t_seconds": 5.7,
+      "evidence_sequences": [
+        215,
+        219
+      ],
+      "path_hint": "UIPopupDefault/Main/Contents/Buttons/UIButtonGreenDark(Clone)",
+      "visible_label": null
+    }
+  ],
+  "observed_editor_transition": {
+    "game_unloaded_t_seconds": 6.246,
+    "game_loaded_t_seconds": 7.583,
+    "evidence_sequences": [
+      224,
+      225
+    ],
+    "later_player_hud_hits": true,
+    "raft_return": "human_confirmed",
+    "quest_reset": "human_reported_not_reset",
+    "assessment": "NEW_GAME_POSTCONDITION_NOT_MET",
+    "scene_reload_alone_is_success": false
+  },
+  "production_expected_behavior": {
+    "source": "human_user, 2026-10-22",
+    "steps": [
+      "После выбора новой игры появляются сюжетные экраны с текстом",
+      "Переходить дальше кнопкой «Далее» снизу интерфейса, пока сюжетные экраны показаны",
+      "После сюжета игрок появляется на плоту",
+      "Квесты начинаются с первого"
+    ],
+    "story_screen_count": null,
+    "story_screen_unity_scene_ids": null,
+    "first_quest_internal_id": null,
+    "verified_on_production_in_this_session": false
+  },
+  "agent_execution": {
+    "decision_owner": "assistant via MCP",
+    "local_helpers": "Только выбранное действие и ограниченное наблюдение/ожидание, без самостоятельного выбора маршрута",
+    "current_authorization": "Воспроизведение завершено: меню → настройки через верхний край → НАЧАТЬ ИГРУ ЗАНОВО → ДА. Пользователь затем остановил управление. Текущее сообщение уточняет навык, но не запускает новый прогон.",
+    "repetition_series": "Stopped by user; acceptance of entry speed does not resume previous repetition loop"
+  },
+  "limitations": [
+    "Журнал доказывает UI-попадания и перезагрузку Game, а не вызовы обработчиков или сброс сохранения",
+    "Отсутствие сброса квестов подтверждено человеком; причинная связь с Editor пока не установлена",
+    "Обходное решение, исправление и первый квест пока не проверены",
+    "В человеческой записи видео отсутствует; текст ДА установлен позднее в агентном воспроизведении. Навигация через настройки проверена; результат удаления прогресса не входит в текущий навык."
+  ],
+  "related_ids": [
+    "ON-UI-ENTRY-001"
+  ],
+  "settings_access_routes": [
+    {
+      "context": "map_menu",
+      "route": [
+        "gear icon",
+        "settings"
+      ],
+      "confirmed_by": "human_user; demonstration 20261022T082044Z-0929c80e"
+    },
+    {
+      "context": "raft_or_island",
+      "route": [
+        "HUD menu icon",
+        "dashboard",
+        "settings"
+      ],
+      "confirmed_by": "human_user; agent opened dashboard and located Settings in stopped attempt"
+    }
+  ],
+  "trigger_phrases": [
+    "начни новую игру",
+    "начать игру заново"
+  ],
+  "current_success_criterion": {
+    "scope": "UI navigation only; human clarified 2026-10-22",
+    "success": "Настройки открыты, нажаты «НАЧАТЬ ИГРУ ЗАНОВО» и подтверждение «ДА»",
+    "excluded": [
+      "Проверка сброса квестов и прогресса",
+      "Разбор причин отличия Editor от продакшена",
+      "Console, исходники и callback перед нажатиями"
+    ],
+    "post_action_observation": "Кратко увидеть реакцию интерфейса; не расширять задачу дополнительной диагностикой"
+  },
+  "execution_policy": {
+    "decision_owner": "assistant via MCP",
+    "behavior": "На запрос новой игры запускать изученный навык целиком, без отдельных решений модели между известными кнопками. Незнакомое окно возвращает управление ассистенту. Код/callback/Console/квесты не читать для этого маршрута.",
+    "map_menu_route": [
+      "шестерёнка",
+      "НАЧАТЬ ИГРУ ЗАНОВО",
+      "ДА"
+    ],
+    "raft_or_island_route": [
+      "меню",
+      "НАСТРОЙКИ",
+      "НАЧАТЬ ИГРУ ЗАНОВО",
+      "ДА"
+    ],
+    "dev_overlay": "Если None перекрывает кнопку настроек — нажать на верхний свободный край самой кнопки, используя текущую геометрию",
+    "confirmation_authorization": "Пользователь явно разрешил удаление прогресса в этом Unity Editor-проекте и подтвердил, что запрос «начни новую игру» включает нажатие «ДА». Это разрешение относится к данному игровому QA-контексту.",
+    "communication": "Без описания каждого шага; краткий итог либо существенное препятствие",
+    "transport_optimization": {
+      "adapter": "tools/unity-ui/session.mjs",
+      "template": "projects/ocean-nomad/tools/fast-ui/step.cs.txt",
+      "status": "Learned controller tested: Settings -> NewGame -> ДА from open dashboard in 0.400 s; full HUD route timing not yet verified",
+      "roles": [
+        "open_menu",
+        "open_settings",
+        "start_new_game",
+        "confirm_new_game"
+      ],
+      "local_route_selection": "Explicitly approved for this familiar route",
+      "step_transport": "batch of selected click plus compact UI; additional acknowledgment reads only if pending",
+      "before_run": "begin session; do not run now because human stopped",
+      "after_run": "finish session to invalidate delayed input and restore background",
+      "input_expiry_seconds": 2,
+      "cache": "stable role snippets; no per-instance-ID recompilation",
+      "checks": "No Console, source callbacks or quest reset inspection"
+    }
+  },
+  "last_agent_reproduction": {
+    "episode_id": "2026-10-22-newgame-02",
+    "ui_route_result": "PASS_UI_ROUTE",
+    "settings_upper_edge": "worked",
+    "new_game_button_pressed": true,
+    "confirmation_label": "ДА",
+    "confirmation_sent": true,
+    "explicit_deletion_approval_received": true,
+    "final_scene": "Game",
+    "quest_display_after": "Добраться до острова Панау  0/1",
+    "quest_state_relevance": "outside current UI-skill success criterion",
+    "stopped_by_user": true,
+    "evidence_note": "Live MCP observations from current conversation; raw attempt archive was not written because user stopped all work before saving"
+  },
+  "last_timed_ui_route": {
+    "result": "PASS_UI_ROUTE",
+    "elapsed_seconds": 0.395,
+    "actions": [
+      "open_menu",
+      "open_settings",
+      "start_new_game",
+      "confirm_new_game"
+    ],
+    "starting_context": "gameplay HUD",
+    "full_hud_route_timing": true,
+    "cleanup_restored_background": true,
+    "cleanup_background_value": false,
+    "speed_accepted": true
+  },
+  "controller_model": {
+    "mode": "human_approved_learned_route",
+    "human_approval": "Да, знакомый маршрут одним навыком",
+    "scope": "Known new-game UI route only",
+    "decision_owner": "Assistant selects the learned skill; its local MCP controller selects only familiar UI transitions",
+    "unknown_ui": "Stop and return control to assistant; do not press unrelated confirmation",
+    "implementation": "projects/ocean-nomad/tools/fast-ui/skill.mjs",
+    "transport": "Multiple MCP requests inside one assistant skill invocation"
+  },
+  "speed_acceptance": {
+    "accepted": true,
+    "by": "human_user",
+    "date": "2026-10-22",
+    "full_hud_route_seconds": 0.395,
+    "quote": "скорость отличная"
+  },
+  "related_ui_catalog": "ON-UI-SETTINGS-001"
+}

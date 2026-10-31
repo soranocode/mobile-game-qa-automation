@@ -1,0 +1,57 @@
+{
+  "id": "ON-UI-MAINMENU-001",
+  "kind": "adaptive_ui_skill",
+  "title": "Выйти в главное меню через настройки",
+  "game_id": "ocean-nomad",
+  "build_id": "2.11.0",
+  "runtime": "UnityEditor",
+  "status": "verified_in_observed_editor_run",
+  "source": "agent_runtime_exploration_with_human_authorization",
+  "observed_at": "2026-10-22T11:02:12.864Z",
+  "entry_routes": [
+    "raft/island → dashboard → settings",
+    "map UI → settings (known from human; exit not replayed from map)"
+  ],
+  "route": [
+    "open_settings if needed",
+    "exit_to_main_menu",
+    "confirm_exit for exact visible exit confirmation",
+    "close optional Premium/Discord",
+    "verify MainScreenWindow2 and one unblocked main_menu_continue control; no blocking window; stable for 350ms"
+  ],
+  "cancel": "НЕТ закрывает подтверждение и оставляет настройки.",
+  "implementation": "projects/ocean-nomad/tools/fast-ui/main-menu.mjs",
+  "verification": {
+    "result": "PASS_MAIN_MENU",
+    "elapsed_seconds": 2.44,
+    "actions": [
+      "open_menu",
+      "open_settings",
+      "exit_to_main_menu",
+      "confirm_exit",
+      "close_premium"
+    ],
+    "final_scene": [
+      "Map"
+    ],
+    "final_windows": [
+      "MainScreen.MainScreenWindow2"
+    ],
+    "cleanup": {
+      "stopped": true,
+      "run_in_background": false
+    },
+    "measured_includes": "UI route, loading/promo wait and final state check; compilation warmup excluded"
+  },
+  "unknown_window": "Stop, return control to assistant; no universal affirmative clicks.",
+  "evidence_ref": {
+    "availability": "local_only_outside_automation_repository",
+    "episode": "2026-10-22T10-56-48-917Z",
+    "files": [
+      "exploration.json",
+      "main-menu-run.json",
+      "main-menu-run-2.json"
+    ],
+    "first_exit_skill_attempt": "NEEDS_REVIEW: дополнительный Discord. Закрытие изучено и включено; этот вариант далее проверен тестами контроллера, во втором живом прогоне Discord не появлялся."
+  }
+}

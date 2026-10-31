@@ -1,0 +1,13 @@
+const string prefix = "QaAgent.FastUi.";
+if (UnityEditor.SessionState.GetBool(prefix + "warmup", false))
+    return new { status = "compiled_only", input_sent = false };
+__ERROR_WATCH_SETUP__
+if (errorWatchBlocked()) return new { status = "blocked_new_error", error_watch = errorWatchSnapshot() };
+var file = UnityEditor.SessionState.GetString(prefix + "parameter_file", "");
+var lines = System.IO.File.ReadAllLines(file);
+if (lines.Length != 2 || string.IsNullOrEmpty(lines[0])) throw new System.InvalidOperationException("Invalid UI parameters");
+float fraction = float.Parse(lines[1], System.Globalization.CultureInfo.InvariantCulture);
+if (fraction < 0 || fraction > 1 || float.IsNaN(fraction)) throw new System.InvalidOperationException("Invalid slider fraction");
+UnityEditor.SessionState.SetString(prefix + "target_path", lines[0]);
+UnityEditor.SessionState.SetFloat(prefix + "slider_fraction", fraction);
+return new { status = "selected", input_sent = false };

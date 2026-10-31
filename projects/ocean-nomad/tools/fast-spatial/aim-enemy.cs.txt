@@ -1,0 +1,114 @@
+// Candidate C#6 execute_code body: ordinary Look drag only, no movement/attack.
+const string key = "QaAgent.AimEnemy.v1";
+var mode = UnityEditor.SessionState.GetString(key + ".mode", "snapshot");
+if (mode == "prepare") return new { status = "compiled_only", input_sent = false };
+__ERROR_WATCH_SETUP__
+var previous = System.AppDomain.CurrentDomain.GetData(key) as System.Collections.Generic.Dictionary<string,object>;
+if (mode == "snapshot") return previous == null ? (object)new { status = "idle" } : previous["result"];
+if (mode == "stop") {
+    if (previous != null && !(bool)previous["finished"]) ((System.Action)previous["cancel"])();
+    return previous == null ? (object)new { status = "idle" } : previous["result"];
+}
+if (mode != "aim") return new { status = "invalid_mode" };
+var priority=System.AppDomain.CurrentDomain.GetData("QaAgent.SharkDefense.v1") as System.Collections.Generic.Dictionary<string,object>;
+if(!key.StartsWith("QaAgent.Shark")&&priority!=null&&(bool)priority["busy"])return new{status="preempted_shark"};
+if (previous != null && !(bool)previous["finished"]) return new { status = "already_running" };
+if (errorWatchBlocked()) return new { status = "blocked_new_error", error_watch = errorWatchSnapshot() };
+if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused || !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false)) return new { status = "not_active" };
+var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var id = UnityEditor.SessionState.GetInt(key + ".target", 0);
+var selected = UnityEditor.EditorUtility.InstanceIDToObject(id);
+var component = selected as UnityEngine.Component;
+var target = selected as UnityEngine.GameObject;
+if (target == null && component != null) target = component.gameObject;
+if (target == null || !target.activeInHierarchy || !target.scene.IsValid() || !target.scene.isLoaded) return new { status = "target_unavailable" };
+var collider = selected as UnityEngine.Collider;
+if (collider == null) collider = target.GetComponentsInChildren<UnityEngine.Collider>().FirstOrDefault(c => c.enabled && c.gameObject.activeInHierarchy);
+var shark = target.GetComponentInParent<global::Enemy.BrutalShark.SharkAISystem>();
+if (shark == null) shark = target.GetComponentInChildren<global::Enemy.BrutalShark.SharkAISystem>();
+var movement = UnityEngine.Object.FindObjectOfType<Survival.Views.Movement>();
+var hud = UnityEngine.Object.FindObjectOfType<Survival.Views.UIView.UIHudControlsPanel>();
+var es = UnityEngine.EventSystems.EventSystem.current;
+if (movement == null || hud == null || hud.LookTouchpad == null || es == null || hud.ActionButtons.Length < 1) return new { status = "input_source_unknown" };
+if (target.scene.handle != movement.gameObject.scene.handle) return new { status = "target_scene_mismatch" };
+var callback = hud.ActionButtons[0].GetType().GetField("_pressExtended", flags).GetValue(hud.ActionButtons[0]) as System.Delegate;
+var playerField = callback == null || callback.Target == null ? null : callback.Target.GetType().GetField("_player", flags);
+var player = playerField == null ? null : playerField.GetValue(callback.Target) as Acme.Joys.JoysPlayer;
+var touch = hud.LookTouchpad;
+var padScale = (float)touch.GetType().GetField("_sens", flags).GetValue(touch);
+if (player == null || padScale <= 0 || player.Sensitivity <= 0) return new { status = "invalid_sensitivity" };
+var baseGain = padScale * player.Sensitivity;
+var view = UnityEngine.Resources.FindObjectsOfTypeAll<UnityEditor.EditorWindow>().FirstOrDefault(w => w.GetType().Name == "GameView");
+if (view == null) return new { status = "game_view_missing" };
+view.Focus(); view.Repaint();
+var rect = touch.GetComponent<UnityEngine.RectTransform>(); var canvas = touch.GetComponentInParent<UnityEngine.Canvas>();
+if (rect == null || canvas == null) return new { status = "look_rect_unknown" };
+var point = UnityEngine.RectTransformUtility.WorldToScreenPoint(canvas.renderMode == UnityEngine.RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, rect.TransformPoint(rect.rect.center));
+var pointer = new UnityEngine.EventSystems.PointerEventData(es) { position = point, pressPosition = point, button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, pointerId = -83, dragging = true, useDragThreshold = false, pointerDrag = touch.gameObject };
+var hits = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>(); es.RaycastAll(pointer, hits);
+if (hits.Count == 0 || UnityEngine.EventSystems.ExecuteEvents.GetEventHandler<UnityEngine.EventSystems.IDragHandler>(hits[0].gameObject) != touch.gameObject) return new { status = "look_covered" };
+pointer.pointerCurrentRaycast = hits[0]; pointer.pointerPressRaycast = hits[0];
+var initialPosition = movement.Position; var scene = movement.gameObject.scene.handle;
+var generation = UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0);
+var began = UnityEditor.EditorApplication.timeSinceStartup;
+bool finished = false, dragging = false; string phase = "aim";
+int ticks = 0, corrections = 0, settleFrames = 0, stableFrames = 0, aimFrames = 0;
+float lastYaw = movement.Yaw, lastPitch = movement.Pitch, lastDx = 0, lastDy = 0, gainX = baseGain, gainY = baseGain, yawError = 0, pitchError = 0;
+var aimPoint = target.transform.position;
+UnityEditor.EditorApplication.CallbackFunction watchdog = null;
+var state = new System.Collections.Generic.Dictionary<string,object> { { "finished", false }, { "result", new { status = "running", phase = phase } } };
+System.AppDomain.CurrentDomain.SetData(key, state);
+System.Action release = () => { pointer.delta = UnityEngine.Vector2.zero; if (dragging && touch != null) UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.endDragHandler); dragging = false; };
+System.Action<string> finish = outcome => {
+    if (finished) return; finished = true;
+    if (watchdog != null) UnityEditor.EditorApplication.update -= watchdog;
+    try { release(); } finally {
+        state["finished"] = true; state["result"] = new { status = outcome, intended_instance = id, yaw_error = yawError, pitch_error = pitchError,
+            aim_world = new[]{aimPoint.x,aimPoint.y,aimPoint.z}, correction_frames = corrections, game_frames = ticks, input_sent = corrections > 0,
+            elapsed_seconds = System.Math.Round(UnityEditor.EditorApplication.timeSinceStartup - began, 3), error_watch = errorWatchSnapshot() };
+    }
+};
+state["cancel"] = (System.Action)(() => finish("cancelled"));
+System.Func<string> interruption = () => {
+    if (errorWatchBlocked()) return "blocked_new_error";
+    if (!UnityEditor.EditorApplication.isPlaying || UnityEditor.EditorApplication.isPaused || !UnityEditor.SessionState.GetBool("QaAgent.FastUi.active", false) || generation != UnityEditor.SessionState.GetInt("QaAgent.FastUi.sequence", 0)) return "cancelled";
+    if (movement == null || touch == null || movement.gameObject.scene.handle != scene) return "scene_changed";
+    if (target == null || !target.activeInHierarchy || target.scene.handle != scene) return "target_unavailable";
+    if (view == null || UnityEditor.EditorWindow.focusedWindow != view) return "focus_lost";
+    if (UnityEngine.Vector3.Distance(initialPosition, movement.Position) > .25f) return "player_moved";
+    if (UnityEditor.EditorApplication.timeSinceStartup - began > 5) return "timeout";
+    return null;
+};
+watchdog = () => { if (finished) return; try { var reason = interruption(); if (reason != null) { finish(reason); return; } UnityEditor.EditorApplication.QueuePlayerLoopUpdate(); view.Repaint(); } catch { finish("executor_exception"); } };
+UnityEditor.EditorApplication.update += watchdog;
+System.Action tick = () => {
+    if (finished) return; ticks++;
+    var reason = interruption(); if (reason != null) { finish(reason); return; }
+    if ((bool)movement.GetType().GetField("_isRotaion", flags).GetValue(movement)) return;
+    aimPoint = shark != null && shark.HitPointTransform != null ? shark.HitPointTransform.position : collider != null && collider.enabled && collider.gameObject.activeInHierarchy ? collider.bounds.center : target.transform.position;
+    var vector = aimPoint - movement.CameraPosition;
+    if (vector.magnitude < .1f || vector.magnitude > 100) { finish("range_outside_skill"); return; }
+    var forward = movement.CameraForward.normalized;
+    yawError = UnityEngine.Vector3.SignedAngle(UnityEngine.Vector3.ProjectOnPlane(forward, UnityEngine.Vector3.up), UnityEngine.Vector3.ProjectOnPlane(vector, UnityEngine.Vector3.up), UnityEngine.Vector3.up);
+    pitchError = UnityEngine.Mathf.Atan2(vector.y, new UnityEngine.Vector2(vector.x, vector.z).magnitude) * UnityEngine.Mathf.Rad2Deg - UnityEngine.Mathf.Asin(UnityEngine.Mathf.Clamp(forward.y, -1, 1)) * UnityEngine.Mathf.Rad2Deg;
+    var yawMotion = UnityEngine.Mathf.DeltaAngle(lastYaw, movement.Yaw); var pitchMotion = movement.Pitch - lastPitch;
+    if (phase == "settle") {
+        settleFrames++; stableFrames = UnityEngine.Mathf.Abs(yawMotion) < .05f && UnityEngine.Mathf.Abs(pitchMotion) < .05f ? stableFrames + 1 : 0;
+        lastYaw = movement.Yaw; lastPitch = movement.Pitch;
+        if (settleFrames < 3 || stableFrames < 2) return;
+        if (UnityEngine.Mathf.Abs(yawError) <= 1.5f && UnityEngine.Mathf.Abs(pitchError) <= 1.5f) { finish("aimed"); return; }
+        phase = "aim"; settleFrames = 0; stableFrames = 0;
+    }
+    aimFrames++; if (aimFrames > 120) { finish("aim_not_converging"); return; }
+    if (UnityEngine.Mathf.Abs(lastDx) > 1 && UnityEngine.Mathf.Abs(yawMotion) > .01f) gainX = UnityEngine.Mathf.Clamp(UnityEngine.Mathf.Abs(yawMotion / lastDx), baseGain * .25f, baseGain * 8);
+    if (UnityEngine.Mathf.Abs(lastDy) > 1 && UnityEngine.Mathf.Abs(pitchMotion) > .01f) gainY = UnityEngine.Mathf.Clamp(UnityEngine.Mathf.Abs(pitchMotion / lastDy), baseGain * .25f, baseGain * 8);
+    lastYaw = movement.Yaw; lastPitch = movement.Pitch;
+    if (UnityEngine.Mathf.Abs(yawError) < .7f && UnityEngine.Mathf.Abs(pitchError) < .7f) { release(); phase = "settle"; lastDx = 0; lastDy = 0; return; }
+    lastDx = UnityEngine.Mathf.Clamp(yawError * .65f / gainX, -120, 120); lastDy = UnityEngine.Mathf.Clamp(pitchError * .65f / gainY, -120, 120);
+    pointer.delta = new UnityEngine.Vector2(lastDx, lastDy); pointer.position += pointer.delta;
+    if (!dragging) { UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.initializePotentialDrag); UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.beginDragHandler); dragging = true; }
+    UnityEngine.EventSystems.ExecuteEvents.Execute(touch.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.dragHandler); corrections++;
+    state["result"] = new { status = "running", phase = phase, game_frames = ticks, yaw_error = yawError, pitch_error = pitchError };
+};
+es.StartCoroutine(Enumerable.Range(0, 600).TakeWhile(i => !finished).Select(i => { if (i > 0) { try { tick(); } catch { finish("executor_exception"); } } return (object)new UnityEngine.WaitForEndOfFrame(); }).GetEnumerator());
+return new { status = "running", selected_instance = id, mode = mode };

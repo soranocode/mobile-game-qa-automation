@@ -1,0 +1,57 @@
+if (UnityEditor.EditorApplication.isPlaying || QaDemonstrations.DemoCapture.IsRecording) throw new System.InvalidOperationException("Technical checks require idle Editor");
+var checks = new System.Collections.Generic.List<string>();
+System.Action<bool,string> check = (ok,name) => { if (!ok) throw new System.Exception("CHECK_FAILED:"+name); checks.Add(name); };
+var zero = UnityEngine.Vector3.zero; var front = UnityEngine.Vector3.forward;
+var right = QaDemonstrations.WorldTargetProjection.Describe(zero,zero,front,new UnityEngine.Vector3(2,0,0));
+check(System.Math.Abs((double)right["yaw_error_degrees_positive_right"]-90)<0.01,"bearing:right_90");
+var left = QaDemonstrations.WorldTargetProjection.Describe(zero,zero,front,new UnityEngine.Vector3(-2,0,0));
+check(System.Math.Abs((double)left["yaw_error_degrees_positive_right"]+90)<0.01,"bearing:left_minus90");
+var ahead = QaDemonstrations.WorldTargetProjection.Describe(zero,zero,front,new UnityEngine.Vector3(0,0,2));
+check(System.Math.Abs((double)ahead["yaw_error_degrees_positive_right"])<0.01,"bearing:ahead_zero");
+var behind = QaDemonstrations.WorldTargetProjection.Describe(zero,zero,front,new UnityEngine.Vector3(0,0,-2));
+check(System.Math.Abs(System.Math.Abs((double)behind["yaw_error_degrees_positive_right"])-180)<0.01,"bearing:behind_180");
+var above = QaDemonstrations.WorldTargetProjection.Describe(zero,zero,front,new UnityEngine.Vector3(0,2,2));
+check(System.Math.Abs((double)above["elevation_error_degrees_positive_up"]-45)<0.01,"bearing:elevation_45");
+var unknown = QaDemonstrations.WorldTargetProjection.Describe(zero,null,null,new UnityEngine.Vector3(0,0,2));
+check(unknown["yaw_error_degrees_positive_right"].Type.ToString()=="Null" && (double)unknown["distance_from_player"]==2,"missing_camera:unknown_angle_known_distance");
+check(right["visible"].Type.ToString()=="Null" && right["reachable"].Type.ToString()=="Null" && (string)right["path_status"]=="not_evaluated","geometry_does_not_claim_visibility_or_route");
+bool invalidQuery=false;try{QaDemonstrations.OceanNomadTelemetry.ReadNearby(0,32);}catch(System.ArgumentOutOfRangeException){invalidQuery=true;}
+check(invalidQuery,"nearby_query:invalid_radius_rejected");
+var flags=System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static;
+var type=typeof(QaDemonstrations.OceanNomadTelemetry);
+var reset=type.GetMethod("Reset",flags);var read=type.GetMethod("ReadQuestState",flags);
+reset.Invoke(null,null);
+try {
+var step = new { Uid="res_collected",Data=new {Type="ObjectCollect"},Parameters=new {Parameters=new[]{new {Key="uid",Value="LogTutotial"},new {Key="uid",Value="TrashTutorial"},new {Key="password",Value="DO_NOT_CAPTURE"}}},Value=1,Need=2,IsComplete=false };
+var quest=new {Uid="hands_collect",IsFinished=false,ActiveSteps=new[]{step},StartedSteps=new[]{step}};
+var manager=new {IsLoaded=new {Value=true},TrackedQuest=new {Value=quest},ActiveQuests=new[]{quest},CompletedQuests=new[]{new {Uid="hands_collect"}}};
+System.Func<object,object,object> at=(obj,key)=>obj.GetType().GetProperty("Item",new[]{key.GetType()}).GetValue(obj,new[]{key});
+var state=read.Invoke(null,new object[]{manager});
+check(((System.Collections.IEnumerable)at(state,"active_collect_target_uids")).Cast<object>().Count()==2,"quest:two_target_uids");
+var stepState=at(at(at(at(state,"active_quests"),0),"steps"),0);
+check(at(state,"tracked_quest_uid").ToString()=="hands_collect" && at(stepState,"value").ToString()=="1" && at(stepState,"need").ToString()=="2","quest:tracked_and_progress_1of2");
+check(((System.Collections.IEnumerable)at(state,"history_completed_observed_quest_uids")).Cast<object>().Count()==1 && at(at(at(state,"active_quests"),0),"is_finished").ToString()=="False","quest:old_history_not_fresh_finish");
+check(!state.ToString().Contains("DO_NOT_CAPTURE"),"quest:nonidentifier_parameter_not_captured");
+var missing=read.Invoke(null,new object[]{null});
+check(at(missing,"availability").ToString()=="unknown" && at(missing,"active_quests").GetType().GetProperty("Type").GetValue(at(missing,"active_quests"),null).ToString()=="Null","missing_manager:unknown_not_empty");
+var manyManager=new {IsLoaded=new {Value=true},TrackedQuest=new {Value=quest},ActiveQuests=System.Linq.Enumerable.Repeat<object>(quest,17).ToArray(),CompletedQuests=new object[0]};
+var bounded=read.Invoke(null,new object[]{manyManager});
+check(at(bounded,"quests_truncated").ToString()=="True" && ((System.Collections.IEnumerable)at(bounded,"active_quests")).Cast<object>().Count()==16,"quest:active_list_bounded_with_flag");
+var craftStep=new {Uid="craft",Data=new{Type="CraftItem"},Parameters=step.Parameters,Value=0,Need=1,IsComplete=false};
+var craftQuest=new {Uid="craft_fixture",IsFinished=false,ActiveSteps=new[]{craftStep},StartedSteps=new[]{craftStep}};
+var craftManager=new {IsLoaded=new{Value=true},TrackedQuest=new{Value=craftQuest},ActiveQuests=new[]{craftQuest},CompletedQuests=new object[0]};
+var craftState=read.Invoke(null,new object[]{craftManager});
+check(at(at(at(at(craftState,"active_quests"),0),"steps"),0)!=null && at(at(at(at(at(craftState,"active_quests"),0),"steps"),0),"world_target_resolution_supported").ToString()=="False" && ((System.Collections.IEnumerable)at(craftState,"active_collect_target_uids")).Cast<object>().Count()==0,"quest:non_collect_not_mapped_to_pickables");
+var largeStep=new {Uid="many_targets",Data=new{Type="ObjectCollect"},Parameters=new {Parameters=System.Linq.Enumerable.Range(0,34).Select(i=>new {Key="uid",Value="fixture"+i}).ToArray()},Value=0,Need=34,IsComplete=false};
+var largeQuest=new {Uid="large_fixture",IsFinished=false,ActiveSteps=new[]{largeStep},StartedSteps=new[]{largeStep}};
+var largeManager=new {IsLoaded=new{Value=true},TrackedQuest=new{Value=largeQuest},ActiveQuests=new[]{largeQuest},CompletedQuests=new object[0]};
+var largeState=read.Invoke(null,new object[]{largeManager});
+var largeStepState=at(at(at(at(largeState,"active_quests"),0),"steps"),0);
+check(at(largeStepState,"target_uids_truncated").ToString()=="True" && ((System.Collections.IEnumerable)at(largeStepState,"target_uids")).Cast<object>().Count()==32,"quest:target_uid_limit_exposed");
+foreach(var pair in new[]{new {Field="SessionStarted",Method="Begin"},new {Field="StateSampled",Method="Sample"},new {Field="BeforeStop",Method="End"}}){
+var handlers=(System.Delegate)typeof(QaDemonstrations.DemoCapture).GetField(pair.Field,flags).GetValue(null);
+int matches=0;if(handlers!=null)foreach(var h in handlers.GetInvocationList())if(h.Method.DeclaringType==type && h.Method.Name==pair.Method)matches++;
+check(matches==1,"hook:"+pair.Field+"_once");
+}
+return new {passed=checks.Count,checks=checks,playing=UnityEditor.EditorApplication.isPlaying,recording=QaDemonstrations.DemoCapture.IsRecording,package_version=QaDemonstrations.RecorderPackage.Version};
+} finally {reset.Invoke(null,null);}
