@@ -1,0 +1,6 @@
+{
+  "name": "GameQA.Agent.Mcp.Editor",
+  "references": ["GameQA.Agent.Editor", "MCPForUnity.Editor"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

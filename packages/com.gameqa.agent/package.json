@@ -1,0 +1,12 @@
+{
+  "name": "com.gameqa.agent",
+  "version": "0.1.0",
+  "displayName": "Game QA Agent Adapter",
+  "description": "Editor-only bounded UI and Ocean Nomad input jobs over the existing Unity MCP.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.ugui": "2.0.0",
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  },
+  "author": {"name": "Game QA Automation"}
+}
