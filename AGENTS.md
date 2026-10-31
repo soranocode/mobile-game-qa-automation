@@ -49,3 +49,8 @@ The active direction is Ocean Nomad automation in Unity Editor on the PC. Learne
 
 - Delegate independent offline automation code analysis, review and patch proposals through tools/cursor-bridge/delegate.py; see docs/CURSOR_DELEGATION.md. Supply only the current goal, selected files and acceptance criteria. Cursor receives a separate snapshot, not the full chat.
 - Cursor returns a proposal. The coordinator checks source freshness, reviews and tests the change before applying it. Cursor is not a Unity controller; the existing game executor keeps sole runtime ownership.
+
+## Semantic memory discovery
+
+- For an unknown free-form task or a concrete knowledge gap on this Windows profile, use work/rag-venv/Scripts/python.exe tools/knowledge/rag.py search QUERY; setup and usage are in docs/RAG_CHROMA.md. Keep known mission UID/alias calls on the direct dispatcher route; do not retrieve memory between motor actions.
+- Chroma results are discovery candidates, not execution authority. Preserve source status and hashes, check applicability and retrieve the reviewed packet before acting. Update the derived local index after approved knowledge edits; caches/models stay outside Git.
